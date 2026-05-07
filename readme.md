@@ -23,6 +23,107 @@ End User
 -> Client Side
 ```
 
+## Architecture Diagram Notes
+
+The current architecture diagram represents the platform as a modular pipeline with a feedback loop back to the client.
+
+### Primary Flow
+
+```text
+End User
+-> Client Side
+-> Client Request
+-> Platform Core
+-> Scene Context
+-> AI Services
+-> Action Plan
+-> Scene Modules
+-> Scene Result
+-> Output / Result
+-> Client Response
+-> Client Side
+```
+
+### Diagram Components
+
+#### End User
+
+The user starts the process by sending an input command. The command can be text-based or voice-based.
+
+#### Client Side
+
+The client side is responsible for user interaction and scene visualization.
+
+- Voice / Text Command
+- 3D Preview
+- Result Viewer
+- Scene Controls
+
+#### Client Request
+
+The client request packages the user's command and the relevant client-side state before sending it to the platform core.
+
+#### Platform Core
+
+The platform core coordinates the request. It prepares the scene context, calls AI services, receives the action plan, and coordinates execution.
+
+#### Scene Context
+
+The scene context describes the current scene state and the information needed by AI services to reason about the user's command.
+
+#### AI Services
+
+AI services understand the user's intent and generate an action plan.
+
+- Intent Detection
+- Scene Understanding
+- Action Plan
+
+#### Action Plan
+
+The action plan is the structured instruction set produced by AI services. It is passed to scene modules for execution.
+
+#### Scene Modules
+
+Scene modules execute the action plan against the scene and validate the result.
+
+- Scene Graph
+- Transform Engine
+- Product Rules
+- Validation
+
+#### Scene Result
+
+The scene result contains the outcome of the executed action plan.
+
+#### Output / Result
+
+The output/result layer prepares the final user-facing result.
+
+- Updated Scene
+- Scene Diff
+- Explanation
+- Preview Update
+
+#### Client Response
+
+The client response sends the result back to the client side so the user can see the updated scene, explanation, and preview changes.
+
+### Data / Storage
+
+Data and storage support the platform core, AI services, and scene modules.
+
+- S3 Object Storage
+- Scene Metadata DB
+- Scene JSON / GLTF
+- Sessions DB
+- Product Catalog
+- Action History
+
+### Key Architectural Rule
+
+AI services should not directly mutate the scene. They generate an action plan. Scene modules execute the action plan, validate the result, and produce the scene result.
+
 ## Main Modules
 
 ### Client Side
