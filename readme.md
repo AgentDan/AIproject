@@ -225,39 +225,49 @@ The current module map breaks the platform into four major implementation areas:
 
 ## MVP Structure Scheme
 
-This is the unified structure for the MVP. The MVP should prove the complete loop: load a scene, send a command, build context, generate an action plan, execute scene changes, validate the result, and return an updated scene response to the client.
+This is the unified structure for the MVP. The diagram is organized as a staged flow so the main pipeline is easy to follow from left to right. Supporting blocks such as contracts, storage, and validation are connected as side responsibilities instead of being mixed into every arrow.
 
 ```mermaid
 flowchart LR
   User[End User]
 
-  subgraph Client[apps/client - React Client]
-    Command[Voice / Text Command]
-    Upload[Upload / Load GLB or GLTF]
-    Preview[3D Preview]
-    Controls[Scene Controls]
-    ResultViewer[Result Viewer]
-    Download[Download Updated Scene]
+  subgraph Client["1. apps/client - React Client"]
+    ClientInput[Voice / Text Command]
+    ClientUpload[Upload / Load GLB or GLTF]
+    ClientPreview[3D Preview]
+    ClientResult[Result Viewer]
+    ClientDownload[Download Updated Scene]
   end
 
-  subgraph Server[apps/server - Node Server]
+  subgraph Request["2. Request Contract"]
+    ClientRequest[Client Request]
+  end
+
+  subgraph Core["3. apps/server - Platform Core"]
     API[API Layer]
     Orchestrator[Platform Orchestrator]
     ContextBuilder[Scene Context Builder]
     AIAdapter[AI Service Adapter]
     SceneExecutor[Scene Module Executor]
     OutputBuilder[Output Builder]
-    ErrorHandler[Validation / Error Handler]
   end
 
-  subgraph AI[AI Services MVP]
+  subgraph Context["4. Scene Context Contract"]
+    SceneContext[Scene Context]
+  end
+
+  subgraph AI["5. AI Services MVP"]
     Intent[Intent Detector]
-    SceneUnderstanding[Scene Understanding Processor]
+    Understanding[Scene Understanding Processor]
     PlanGenerator[Action Plan Generator]
     PlanValidator[Action Plan Validator]
   end
 
-  subgraph Scene[Scene Modules MVP]
+  subgraph Plan["6. Action Plan Contract"]
+    ActionPlan[Action Plan]
+  end
+
+  subgraph Scene["7. Scene Modules MVP"]
     SceneGraph[Scene Graph Manager]
     Transform[Transform Engine]
     Material[Material Engine]
@@ -267,54 +277,64 @@ flowchart LR
     Exporter[GLTF / GLB Exporter]
   end
 
-  subgraph Storage[Data / Storage MVP]
-    AssetStore[Scene Assets / Exports]
-    MetadataStore[Scene Metadata / Sessions / History]
-  end
-
-  subgraph Contracts[packages/contracts]
-    ClientRequest[Client Request]
-    SceneContext[Scene Context]
-    ActionPlan[Action Plan]
+  subgraph Result["8. Result Contracts"]
     SceneResult[Scene Result]
     ClientResponse[Client Response]
   end
 
-  User --> Command
-  User --> Upload
-  Command --> ClientRequest
-  Upload --> ClientRequest
+  subgraph Storage["Data / Storage MVP"]
+    Assets[Scene Assets / Exports]
+    Metadata[Scene Metadata]
+    Sessions[Sessions / Action History]
+  end
+
+  subgraph Validation["Validation / Error Handling"]
+    ErrorHandler[Validation / Error Handler]
+  end
+
+  User --> ClientInput
+  User --> ClientUpload
+
+  ClientInput --> ClientRequest
+  ClientUpload --> ClientRequest
+
   ClientRequest --> API
   API --> Orchestrator
   Orchestrator --> ContextBuilder
   ContextBuilder --> SceneContext
   SceneContext --> AIAdapter
+
   AIAdapter --> Intent
-  Intent --> SceneUnderstanding
-  SceneUnderstanding --> PlanGenerator
-  PlanGenerator --> ActionPlan
-  ActionPlan --> PlanValidator
-  PlanValidator --> SceneExecutor
+  Intent --> Understanding
+  Understanding --> PlanGenerator
+  PlanGenerator --> PlanValidator
+  PlanValidator --> ActionPlan
+
+  ActionPlan --> SceneExecutor
   SceneExecutor --> SceneGraph
-  SceneExecutor --> Transform
-  SceneExecutor --> Material
-  SceneExecutor --> MeshAnalysis
-  SceneExecutor --> SceneValidation
+  SceneGraph --> Transform
+  Transform --> Material
+  Material --> MeshAnalysis
+  MeshAnalysis --> SceneValidation
   SceneValidation --> Diff
   Diff --> Exporter
   Exporter --> SceneResult
+
   SceneResult --> OutputBuilder
   OutputBuilder --> ClientResponse
-  ClientResponse --> ResultViewer
-  ClientResponse --> Preview
-  ClientResponse --> Controls
-  ClientResponse --> Download
+  ClientResponse --> ClientPreview
+  ClientResponse --> ClientResult
+  ClientResponse --> ClientDownload
 
-  ContextBuilder <--> MetadataStore
-  SceneExecutor <--> AssetStore
-  SceneExecutor <--> MetadataStore
-  Exporter --> AssetStore
-  ErrorHandler --> ClientResponse
+  ContextBuilder -. reads / writes .-> Metadata
+  ContextBuilder -. session state .-> Sessions
+  SceneExecutor -. reads source scene .-> Assets
+  Exporter -. saves updated scene .-> Assets
+  SceneExecutor -. action history .-> Sessions
+
+  PlanValidator -. invalid plan .-> ErrorHandler
+  SceneValidation -. invalid scene .-> ErrorHandler
+  ErrorHandler -. error response .-> ClientResponse
 ```
 
 ### MVP Block Responsibilities
