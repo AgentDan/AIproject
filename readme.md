@@ -252,7 +252,7 @@ The current module map breaks the platform into four major implementation areas:
 
 Monorepo with:
 
-- `apps/web`
+- `apps/client`
 - `apps/server`
 - `packages/contracts`
 - `docs`
