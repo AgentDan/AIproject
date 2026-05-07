@@ -168,6 +168,53 @@ AI services should not directly mutate the scene. They generate an action plan. 
 - S3 for GLB, GLTF, assets, and exports
 - Database for scene metadata, sessions, product catalog, action history, and scene diffs
 
+## Detailed Module Map
+
+The current module map breaks the platform into four major implementation areas: backend modules, frontend/client-side modules, AI services modules, and scene modules.
+
+### Backend Modules
+
+1. **API Layer**
+2. **Platform Orchestrator**
+3. **Scene Context Builder**
+4. **AI Service Adapter**
+5. **Scene Module Executor**
+6. **Storage Service**
+7. **Output Builder**
+8. **Validation / Error Handler**
+
+### Frontend / Client-Side Modules
+
+1. **Command Input Module**
+2. **Voice Input Module**
+3. **3D Preview Module**
+4. **Scene Controls Module**
+5. **Result Viewer Module**
+6. **Upload / Download Module**
+7. **Client State Manager**
+8. **API Client**
+
+### AI Services Modules
+
+1. **Prompt Builder** - Builds prompts from the Scene Context.
+2. **Intent Detector** - Detects what the user wants to do.
+3. **Scene Understanding Processor** - Interprets scene objects, roles, constraints, and relationships.
+4. **Action Plan Generator** - Creates a machine-readable action plan.
+5. **Action Plan Validator** - Checks AI output against allowed schemas and actions.
+6. **AI Response Parser** - Parses the AI JSON response.
+7. **AI Fallback / Retry Handler** - Handles invalid AI responses, low confidence, and retries.
+
+### Scene Modules
+
+1. **Scene Graph Manager** - Manages scene nodes, hierarchy, objects, and metadata.
+2. **Transform Engine** - Applies position, rotation, and scale changes.
+3. **Material Engine** - Applies material and color changes.
+4. **Mesh Analysis Engine** - Calculates bounding boxes, mesh count, and distances.
+5. **Product Rules Engine** - Checks product and scene behavior rules.
+6. **Scene Validation Engine** - Validates actions and the updated scene state.
+7. **Scene Diff Generator** - Creates a before/after change list.
+8. **GLTF / GLB Exporter** - Exports the updated scene file.
+
 ## Core Data Contracts
 
 - Client Request
