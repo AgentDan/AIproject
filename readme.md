@@ -223,6 +223,109 @@ The current module map breaks the platform into four major implementation areas:
 - Scene Result
 - Client Response
 
+## MVP Structure Scheme
+
+This is the unified structure for the MVP. The MVP should prove the complete loop: load a scene, send a command, build context, generate an action plan, execute scene changes, validate the result, and return an updated scene response to the client.
+
+```mermaid
+flowchart LR
+  User[End User]
+
+  subgraph Client[apps/client - React Client]
+    Command[Voice / Text Command]
+    Upload[Upload / Load GLB or GLTF]
+    Preview[3D Preview]
+    Controls[Scene Controls]
+    ResultViewer[Result Viewer]
+    Download[Download Updated Scene]
+  end
+
+  subgraph Server[apps/server - Node Server]
+    API[API Layer]
+    Orchestrator[Platform Orchestrator]
+    ContextBuilder[Scene Context Builder]
+    AIAdapter[AI Service Adapter]
+    SceneExecutor[Scene Module Executor]
+    OutputBuilder[Output Builder]
+    ErrorHandler[Validation / Error Handler]
+  end
+
+  subgraph AI[AI Services MVP]
+    Intent[Intent Detector]
+    SceneUnderstanding[Scene Understanding Processor]
+    PlanGenerator[Action Plan Generator]
+    PlanValidator[Action Plan Validator]
+  end
+
+  subgraph Scene[Scene Modules MVP]
+    SceneGraph[Scene Graph Manager]
+    Transform[Transform Engine]
+    Material[Material Engine]
+    MeshAnalysis[Mesh Analysis Engine]
+    SceneValidation[Scene Validation Engine]
+    Diff[Scene Diff Generator]
+    Exporter[GLTF / GLB Exporter]
+  end
+
+  subgraph Storage[Data / Storage MVP]
+    AssetStore[Scene Assets / Exports]
+    MetadataStore[Scene Metadata / Sessions / History]
+  end
+
+  subgraph Contracts[packages/contracts]
+    ClientRequest[Client Request]
+    SceneContext[Scene Context]
+    ActionPlan[Action Plan]
+    SceneResult[Scene Result]
+    ClientResponse[Client Response]
+  end
+
+  User --> Command
+  User --> Upload
+  Command --> ClientRequest
+  Upload --> ClientRequest
+  ClientRequest --> API
+  API --> Orchestrator
+  Orchestrator --> ContextBuilder
+  ContextBuilder --> SceneContext
+  SceneContext --> AIAdapter
+  AIAdapter --> Intent
+  Intent --> SceneUnderstanding
+  SceneUnderstanding --> PlanGenerator
+  PlanGenerator --> ActionPlan
+  ActionPlan --> PlanValidator
+  PlanValidator --> SceneExecutor
+  SceneExecutor --> SceneGraph
+  SceneExecutor --> Transform
+  SceneExecutor --> Material
+  SceneExecutor --> MeshAnalysis
+  SceneExecutor --> SceneValidation
+  SceneValidation --> Diff
+  Diff --> Exporter
+  Exporter --> SceneResult
+  SceneResult --> OutputBuilder
+  OutputBuilder --> ClientResponse
+  ClientResponse --> ResultViewer
+  ClientResponse --> Preview
+  ClientResponse --> Controls
+  ClientResponse --> Download
+
+  ContextBuilder <--> MetadataStore
+  SceneExecutor <--> AssetStore
+  SceneExecutor <--> MetadataStore
+  Exporter --> AssetStore
+  ErrorHandler --> ClientResponse
+```
+
+### MVP Block Responsibilities
+
+- **Client**: provides one user-facing flow for loading a scene, sending a command, previewing results, and downloading the updated scene.
+- **Server**: coordinates requests, builds scene context, calls AI services, executes scene modules, and builds the client response.
+- **AI Services**: detect intent and generate a validated action plan. They do not directly modify the scene.
+- **Scene Modules**: execute the action plan, validate the updated scene, generate the diff, and export the result.
+- **Storage**: keeps scene files, exports, metadata, session state, and action history.
+- **Contracts**: define the data passed between client, server, AI services, and scene modules.
+
 ## MVP Use Cases
 
 1. Move Object
