@@ -233,10 +233,7 @@ flowchart LR
 
   subgraph Client["1. apps/client - React Client"]
     ClientInput[Voice / Text Command]
-    ClientUpload[Upload / Load GLB or GLTF]
     ClientPreview[3D Preview]
-    ClientResult[Result Viewer]
-    ClientDownload[Download Updated Scene]
   end
 
   subgraph Request["2. Request Contract"]
@@ -293,10 +290,8 @@ flowchart LR
   end
 
   User --> ClientInput
-  User --> ClientUpload
 
   ClientInput --> ClientRequest
-  ClientUpload --> ClientRequest
 
   ClientRequest --> API
   API --> Orchestrator
@@ -323,8 +318,6 @@ flowchart LR
   SceneResult --> OutputBuilder
   OutputBuilder --> ClientResponse
   ClientResponse --> ClientPreview
-  ClientResponse --> ClientResult
-  ClientResponse --> ClientDownload
 
   ContextBuilder -. reads / writes .-> Metadata
   ContextBuilder -. session state .-> Sessions
@@ -339,12 +332,22 @@ flowchart LR
 
 ### MVP Block Responsibilities
 
-- **Client**: provides one user-facing flow for loading a scene, sending a command, previewing results, and downloading the updated scene.
+- **Client**: currently provides a focused user-facing flow with voice/text command input and a 3D preview area.
 - **Server**: coordinates requests, builds scene context, calls AI services, executes scene modules, and builds the client response.
 - **AI Services**: detect intent and generate a validated action plan. They do not directly modify the scene.
 - **Scene Modules**: execute the action plan, validate the updated scene, generate the diff, and export the result.
 - **Storage**: keeps scene files, exports, metadata, session state, and action history.
 - **Contracts**: define the data passed between client, server, AI services, and scene modules.
+
+### Current Client UI Scope
+
+The current client UI is intentionally limited to:
+
+- **Voice command input** - the user can speak a command.
+- **Text command input** - the user can type a command directly.
+- **3D Preview** - the user sees the product scene area.
+
+The following UI functions are intentionally not shown yet: upload, download, result viewer, object list, scene controls, and action buttons. They can be added later when the backend and scene pipeline are ready.
 
 ## MVP Use Cases
 
@@ -375,7 +378,7 @@ flowchart LR
 
 1. **Stabilize the project foundation** - keep the monorepo structure clear, confirm `apps/client`, `apps/server`, `packages/contracts`, and `docs`, and keep `npm run dev` working from the repository root.
 2. **Define shared data contracts** - create the JavaScript-friendly contract shapes for Client Request, Scene Context, Action Plan, Scene Result, and Client Response before building deeper behavior.
-3. **Build the client MVP shell** - implement the single-page React interface with upload/load controls, command input, 3D preview area, result viewer, and download action.
+3. **Build the client MVP shell** - implement the single-page React interface with voice/text command input and a 3D preview area only for the current scope.
 4. **Build the server API layer** - add minimal endpoints for scene upload/load, command execution, health checks, and result download.
 5. **Implement scene storage for MVP** - support local development storage for source scenes, updated scenes, scene metadata, sessions, and action history, with a path that can later move to S3 and a database.
 6. **Create the Scene Context Builder** - parse the loaded scene into a compact Scene Context that includes objects, hierarchy, transforms, materials, metadata, and user command context.
@@ -383,6 +386,54 @@ flowchart LR
 8. **Create the Scene Modules pipeline** - implement the MVP scene actions: move object, show bounding boxes, measure mesh distance, change object color, validate scene state, generate scene diff, and export GLTF/GLB.
 9. **Connect the full request-to-response loop** - wire Client Request -> Platform Core -> Scene Context -> AI Services -> Action Plan -> Scene Modules -> Scene Result -> Client Response -> Client UI.
 10. **Validate the MVP user flows** - test the five MVP use cases end to end: Move Object, Show Bounding Boxes, Measure Mesh Distance, Change Object Color, and Download Updated Scene.
+
+## MVP Roadmap Progress
+
+Current stage: **Step 3 is complete**. We have a stable project foundation, shared JavaScript data contracts, and a simplified client shell with only voice/text command input and a 3D preview. The next planned stage is **Step 4: Build the server API layer**.
+
+```mermaid
+flowchart LR
+  S1["1. Project foundation"] --> S2["2. Shared contracts"]
+  S2 --> S3["3. Client MVP shell"]
+  S3 --> S4["4. Server API layer"]
+  S4 --> S5["5. Scene storage"]
+  S5 --> S6["6. Scene Context Builder"]
+  S6 --> S7["7. AI services pipeline"]
+  S7 --> S8["8. Scene Modules pipeline"]
+  S8 --> S9["9. Full request-to-response loop"]
+  S9 --> S10["10. End-to-end validation"]
+
+  S1:::done
+  S2:::done
+  S3:::current
+  S4:::next
+  S5:::pending
+  S6:::pending
+  S7:::pending
+  S8:::pending
+  S9:::pending
+  S10:::pending
+
+  classDef done fill:#16a34a,stroke:#86efac,color:#ffffff
+  classDef current fill:#0891b2,stroke:#67e8f9,color:#ffffff
+  classDef next fill:#ca8a04,stroke:#fde68a,color:#111827
+  classDef pending fill:#334155,stroke:#94a3b8,color:#ffffff
+```
+
+### Roadmap Status Table
+
+| Step | Roadmap item | Status | Notes |
+| --- | --- | --- | --- |
+| 1 | Stabilize the project foundation | Done | `npm run dev` starts client and server from the root. |
+| 2 | Define shared data contracts | Done | `packages/contracts` contains JavaScript contract factories and validators. |
+| 3 | Build the client MVP shell | Current / Done | UI is now limited to voice/text command input and 3D preview. |
+| 4 | Build the server API layer | Next | Add minimal endpoints for health and command requests. |
+| 5 | Implement scene storage for MVP | Pending | Add local development storage before S3/DB integration. |
+| 6 | Create the Scene Context Builder | Pending | Build context from scene data and user command. |
+| 7 | Create the AI services pipeline | Pending | Build prompt, intent detection, action plan generation, validation, and retry flow. |
+| 8 | Create the Scene Modules pipeline | Pending | Execute validated action plans against scene modules. |
+| 9 | Connect the full request-to-response loop | Pending | Wire client, server, contracts, AI, and scene modules together. |
+| 10 | Validate the MVP user flows | Pending | Test the MVP use cases end to end. |
 
 ## Suggested Project Structure
 
