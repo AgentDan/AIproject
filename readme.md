@@ -371,6 +371,19 @@ flowchart LR
 - Download the updated scene
 - Show the scene diff and explanation
 
+## MVP Development Roadmap
+
+1. **Stabilize the project foundation** - keep the monorepo structure clear, confirm `apps/client`, `apps/server`, `packages/contracts`, and `docs`, and keep `npm run dev` working from the repository root.
+2. **Define shared data contracts** - create the JavaScript-friendly contract shapes for Client Request, Scene Context, Action Plan, Scene Result, and Client Response before building deeper behavior.
+3. **Build the client MVP shell** - implement the single-page React interface with upload/load controls, command input, 3D preview area, result viewer, and download action.
+4. **Build the server API layer** - add minimal endpoints for scene upload/load, command execution, health checks, and result download.
+5. **Implement scene storage for MVP** - support local development storage for source scenes, updated scenes, scene metadata, sessions, and action history, with a path that can later move to S3 and a database.
+6. **Create the Scene Context Builder** - parse the loaded scene into a compact Scene Context that includes objects, hierarchy, transforms, materials, metadata, and user command context.
+7. **Create the AI services pipeline** - implement prompt building, intent detection, scene understanding, action plan generation, action plan validation, JSON parsing, and fallback/retry handling.
+8. **Create the Scene Modules pipeline** - implement the MVP scene actions: move object, show bounding boxes, measure mesh distance, change object color, validate scene state, generate scene diff, and export GLTF/GLB.
+9. **Connect the full request-to-response loop** - wire Client Request -> Platform Core -> Scene Context -> AI Services -> Action Plan -> Scene Modules -> Scene Result -> Client Response -> Client UI.
+10. **Validate the MVP user flows** - test the five MVP use cases end to end: Move Object, Show Bounding Boxes, Measure Mesh Distance, Change Object Color, and Download Updated Scene.
+
 ## Suggested Project Structure
 
 Monorepo with:
