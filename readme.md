@@ -349,6 +349,16 @@ The current client UI is intentionally limited to:
 
 The following UI functions are intentionally not shown yet: upload, download, result viewer, object list, scene controls, and action buttons. They can be added later when the backend and scene pipeline are ready.
 
+### Current Server API Scope
+
+The current server API layer is intentionally minimal and supports:
+
+- `GET /health` - checks that the server is running.
+- `GET /api` - returns basic API metadata and available endpoints.
+- `POST /api/commands` - accepts a voice/text command request, validates it with shared contracts, and returns a structured Client Response placeholder.
+
+The command endpoint does not call AI or mutate a scene yet. It only confirms that the API layer can receive, validate, and return a structured response for future pipeline steps.
+
 ## MVP Use Cases
 
 1. Move Object
@@ -379,7 +389,7 @@ The following UI functions are intentionally not shown yet: upload, download, re
 1. **Stabilize the project foundation** - keep the monorepo structure clear, confirm `apps/client`, `apps/server`, `packages/contracts`, and `docs`, and keep `npm run dev` working from the repository root.
 2. **Define shared data contracts** - create the JavaScript-friendly contract shapes for Client Request, Scene Context, Action Plan, Scene Result, and Client Response before building deeper behavior.
 3. **Build the client MVP shell** - implement the single-page React interface with voice/text command input and a 3D preview area only for the current scope.
-4. **Build the server API layer** - add minimal endpoints for scene upload/load, command execution, health checks, and result download.
+4. **Build the server API layer** - add minimal endpoints for health checks, API metadata, and voice/text command requests.
 5. **Implement scene storage for MVP** - support local development storage for source scenes, updated scenes, scene metadata, sessions, and action history, with a path that can later move to S3 and a database.
 6. **Create the Scene Context Builder** - parse the loaded scene into a compact Scene Context that includes objects, hierarchy, transforms, materials, metadata, and user command context.
 7. **Create the AI services pipeline** - implement prompt building, intent detection, scene understanding, action plan generation, action plan validation, JSON parsing, and fallback/retry handling.
@@ -389,7 +399,7 @@ The following UI functions are intentionally not shown yet: upload, download, re
 
 ## MVP Roadmap Progress
 
-Current stage: **Step 3 is complete**. We have a stable project foundation, shared JavaScript data contracts, and a simplified client shell with only voice/text command input and a 3D preview. The next planned stage is **Step 4: Build the server API layer**.
+Current stage: **Step 4 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell with only voice/text command input and a 3D preview, and a minimal server API layer for health checks, API metadata, and command requests. The next planned stage is **Step 5: Implement scene storage for MVP**.
 
 ```mermaid
 flowchart LR
@@ -405,9 +415,9 @@ flowchart LR
 
   S1:::done
   S2:::done
-  S3:::current
-  S4:::next
-  S5:::pending
+  S3:::done
+  S4:::current
+  S5:::next
   S6:::pending
   S7:::pending
   S8:::pending
@@ -426,9 +436,9 @@ flowchart LR
 | --- | --- | --- | --- |
 | 1 | Stabilize the project foundation | Done | `npm run dev` starts client and server from the root. |
 | 2 | Define shared data contracts | Done | `packages/contracts` contains JavaScript contract factories and validators. |
-| 3 | Build the client MVP shell | Current / Done | UI is now limited to voice/text command input and 3D preview. |
-| 4 | Build the server API layer | Next | Add minimal endpoints for health and command requests. |
-| 5 | Implement scene storage for MVP | Pending | Add local development storage before S3/DB integration. |
+| 3 | Build the client MVP shell | Done | UI is now limited to voice/text command input and 3D preview. |
+| 4 | Build the server API layer | Current / Done | Added health, API metadata, and command request endpoints. |
+| 5 | Implement scene storage for MVP | Next | Add local development storage before S3/DB integration. |
 | 6 | Create the Scene Context Builder | Pending | Build context from scene data and user command. |
 | 7 | Create the AI services pipeline | Pending | Build prompt, intent detection, action plan generation, validation, and retry flow. |
 | 8 | Create the Scene Modules pipeline | Pending | Execute validated action plans against scene modules. |
