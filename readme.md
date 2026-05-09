@@ -397,6 +397,30 @@ Current context output:
 
 This builder does not parse a real GLB/GLTF scene yet. It creates the contract shape that the future AI services pipeline will consume.
 
+### Current AI Services Pipeline Scope
+
+The current AI Services pipeline is local and deterministic. It does not call OpenAI yet. It prepares the architecture for a future OpenAI/RAG integration by producing the same structured output that the real AI service should return.
+
+Current AI pipeline stages:
+
+- **Prompt Builder** - builds a prompt object from Scene Context.
+- **Intent Detector** - detects the requested action from voice/text command using MVP rules.
+- **Scene Understanding Processor** - selects the target scene object and extracts basic constraints.
+- **Action Plan Generator** - creates a machine-readable `Action Plan` contract.
+- **Action Plan Validator** - validates the generated plan against contracts and scene constraints.
+- **AI Response Parser** - normalizes the generated plan as if it came from an AI response.
+- **AI Fallback / Retry Handler** - creates a safe fallback plan if primary validation fails.
+
+Current supported intents:
+
+- `move_object`
+- `change_object_color`
+- `show_bounding_boxes`
+- `measure_mesh_distance`
+- `download_updated_scene`
+
+This pipeline generates Action Plans only. Scene Modules will execute the Action Plan in the next roadmap step.
+
 ## MVP Use Cases
 
 1. Move Object
@@ -437,7 +461,7 @@ This builder does not parse a real GLB/GLTF scene yet. It creates the contract s
 
 ## MVP Roadmap Progress
 
-Current stage: **Step 6 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell, a minimal server API layer, local MVP storage, and a Scene Context Builder that assembles context from client requests, sessions, scene metadata, and action history. The next planned stage is **Step 7: Create the AI services pipeline**.
+Current stage: **Step 7 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell, a minimal server API layer, local MVP storage, a Scene Context Builder, and a local AI Services pipeline that creates validated Action Plans from Scene Context. The next planned stage is **Step 8: Create the Scene Modules pipeline**.
 
 ```mermaid
 flowchart LR
@@ -456,9 +480,9 @@ flowchart LR
   S3:::done
   S4:::done
   S5:::done
-  S6:::current
-  S7:::next
-  S8:::pending
+  S6:::done
+  S7:::current
+  S8:::next
   S9:::pending
   S10:::pending
 
@@ -477,9 +501,9 @@ flowchart LR
 | 3 | Build the client MVP shell | Done | UI is now limited to voice/text command input and 3D preview. |
 | 4 | Build the server API layer | Done | Added health, API metadata, storage status, and command request endpoints. |
 | 5 | Implement scene storage for MVP | Done | Added local JSON storage for sessions, scene metadata, action history, assets, and exports. |
-| 6 | Create the Scene Context Builder | Current / Done | Builds Scene Context from client request, session, scene metadata, and action history. |
-| 7 | Create the AI services pipeline | Next | Build prompt, intent detection, action plan generation, validation, and retry flow. |
-| 8 | Create the Scene Modules pipeline | Pending | Execute validated action plans against scene modules. |
+| 6 | Create the Scene Context Builder | Done | Builds Scene Context from client request, session, scene metadata, and action history. |
+| 7 | Create the AI services pipeline | Current / Done | Builds prompt, detects intent, understands scene context, generates and validates Action Plan. |
+| 8 | Create the Scene Modules pipeline | Next | Execute validated action plans against scene modules. |
 | 9 | Connect the full request-to-response loop | Pending | Wire client, server, contracts, AI, and scene modules together. |
 | 10 | Validate the MVP user flows | Pending | Test the MVP use cases end to end. |
 

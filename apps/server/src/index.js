@@ -11,6 +11,7 @@ import {
   recordCommandRequest
 } from './storage/local-storage.js';
 import { buildSceneContext } from './core/scene-context-builder.js';
+import { runAiServicesPipeline } from './ai-services/pipeline.js';
 
 const port = process.env.PORT || 3001;
 
@@ -128,17 +129,38 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  const aiServices = await runAiServicesPipeline(sceneContext);
+
+  if (!aiServices.validation.valid) {
+    sendJson(response, 500, {
+      ...createClientResponse({
+        requestId: clientRequest.requestId,
+        sessionId: clientRequest.sessionId,
+        sceneId: clientRequest.sceneId,
+        status: CLIENT_RESPONSE_STATUS.ERROR,
+        message: 'AI Services pipeline validation failed.',
+        errors: aiServices.validation.errors
+      }),
+      clientRequest,
+      storage,
+      sceneContext,
+      aiServices
+    });
+    return;
+  }
+
   sendJson(response, 202, {
     ...createClientResponse({
       requestId: clientRequest.requestId,
       sessionId: clientRequest.sessionId,
       sceneId: clientRequest.sceneId,
       message: 'Command request accepted.',
-      explanation: 'The API layer received and stored the voice/text command, then built a Scene Context for future AI processing.'
+      explanation: 'The API layer received and stored the voice/text command, built a Scene Context, and generated a validated Action Plan.'
     }),
     clientRequest,
     storage,
-    sceneContext
+    sceneContext,
+    aiServices
   });
 }
 
