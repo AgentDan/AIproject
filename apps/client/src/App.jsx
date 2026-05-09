@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -8,6 +8,19 @@ export default function App() {
   const [response, setResponse] = useState(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverNotice, setServerNotice] = useState(null);
+
+  useEffect(() => {
+    if (!serverNotice) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setServerNotice(null);
+    }, 5200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [serverNotice]);
 
   async function sendCommand(nextInputType = inputType) {
     const trimmedCommand = command.trim();
@@ -44,9 +57,21 @@ export default function App() {
       }
 
       setResponse(payload);
+      setServerNotice({
+        type: 'success',
+        title: payload.message || 'Command accepted',
+        message: payload.explanation || 'The server processed the command.',
+        intent: payload.aiServices?.actionPlan?.intent,
+        resultStatus: payload.sceneResult?.status
+      });
     } catch (requestError) {
       setResponse(null);
       setError(requestError.message);
+      setServerNotice({
+        type: 'error',
+        title: 'Server response error',
+        message: requestError.message
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -59,6 +84,37 @@ export default function App() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
+      {serverNotice ? (
+        <div className="fixed right-6 top-1/2 z-50 w-[min(92vw,380px)] -translate-y-1/2 rounded-3xl border border-white/15 bg-slate-950/75 p-5 text-sm text-slate-100 shadow-2xl shadow-cyan-950/40 backdrop-blur-xl">
+          <div className="flex items-start gap-3">
+            <span
+              className={`mt-1 h-3 w-3 rounded-full ${
+                serverNotice.type === 'error' ? 'bg-red-300' : 'bg-emerald-300'
+              }`}
+            />
+            <div>
+              <p className="font-semibold text-white">{serverNotice.title}</p>
+              <p className="mt-2 leading-6 text-slate-300">{serverNotice.message}</p>
+              {serverNotice.intent || serverNotice.resultStatus ? (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {serverNotice.intent ? (
+                    <div className="rounded-2xl bg-white/10 p-3">
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Intent</p>
+                      <p className="mt-1 font-semibold text-cyan-200">{serverNotice.intent}</p>
+                    </div>
+                  ) : null}
+                  {serverNotice.resultStatus ? (
+                    <div className="rounded-2xl bg-white/10 p-3">
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Result</p>
+                      <p className="mt-1 font-semibold text-emerald-200">{serverNotice.resultStatus}</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
       <section className="mx-auto flex min-h-screen max-w-7xl flex-col gap-8 px-6 py-8 lg:px-8">
         <header className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-cyan-950/30">
           <div>
