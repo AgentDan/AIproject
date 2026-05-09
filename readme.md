@@ -341,13 +341,15 @@ flowchart LR
 
 ### Current Client UI Scope
 
-The current client UI is intentionally limited to:
+The current client UI is intentionally minimal and fullscreen:
 
-- **Voice command input** - the user can speak a command.
-- **Text command input** - the user can type a command directly.
-- **3D Preview** - the user sees the product scene area and the latest pipeline response summary.
+- **Fullscreen 3D Preview** - the scene/model area occupies almost the entire screen.
+- **Floating AI control** - a small translucent AI entity is the primary input control.
+- **Voice-first command input** - clicking the AI control starts voice command input when browser speech recognition is available.
+- **Optional text input** - a small secondary text control opens only when the user needs to type a command.
+- **Transient server response notice** - server responses appear in a translucent overlay and disappear automatically.
 
-The following UI functions are intentionally not shown yet: upload, download, object list, scene controls, and action buttons. They can be added later when the backend and scene pipeline are ready.
+The following UI functions are intentionally not shown yet: upload, download, object list, scene controls, permanent panels, and action buttons. They can be added later when the backend and scene pipeline are ready.
 
 ### Current Server API Scope
 
