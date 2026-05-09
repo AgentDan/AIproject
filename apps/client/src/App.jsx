@@ -165,28 +165,28 @@ export default function App() {
       </section>
 
       {serverNotice ? (
-        <div className="fixed right-6 top-1/2 z-50 w-[min(92vw,380px)] -translate-y-1/2 rounded-3xl border border-white/15 bg-slate-950/70 p-5 text-sm text-slate-100 shadow-2xl shadow-cyan-950/40 backdrop-blur-xl">
-          <div className="flex items-start gap-3">
+        <div className="fixed left-1/2 top-[24%] z-50 w-[min(88vw,640px)] -translate-x-1/2 rounded-[2rem] border border-white/15 bg-white/25 px-8 py-6 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-2xl">
+          <div className="flex items-start gap-4">
             <span
-              className={`mt-1 h-3 w-3 rounded-full ${
+              className={`mt-1.5 h-3.5 w-3.5 rounded-full shadow-lg ${
                 serverNotice.type === 'error' ? 'bg-red-300' : 'bg-emerald-300'
               }`}
             />
             <div>
-              <p className="font-semibold text-white">{serverNotice.title}</p>
-              <p className="mt-2 leading-6 text-slate-300">{serverNotice.message}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-white/45">
+                AI Response
+              </p>
+              <p className="mt-3 leading-6 text-white/90">{serverNotice.message}</p>
               {serverNotice.intent || serverNotice.resultStatus ? (
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="mt-4 flex flex-wrap gap-3">
                   {serverNotice.intent ? (
-                    <div className="rounded-2xl bg-white/10 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Intent</p>
-                      <p className="mt-1 font-semibold text-cyan-200">{serverNotice.intent}</p>
+                    <div className="rounded-full bg-white/10 px-4 py-2">
+                      <p className="text-xs font-semibold text-white/75">{serverNotice.intent}</p>
                     </div>
                   ) : null}
                   {serverNotice.resultStatus ? (
-                    <div className="rounded-2xl bg-white/10 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Result</p>
-                      <p className="mt-1 font-semibold text-emerald-200">{serverNotice.resultStatus}</p>
+                    <div className="rounded-full bg-white/10 px-4 py-2">
+                      <p className="text-xs font-semibold text-white/75">{serverNotice.resultStatus}</p>
                     </div>
                   ) : null}
                 </div>
@@ -197,24 +197,24 @@ export default function App() {
       ) : null}
 
       {isTextOpen ? (
-        <div className="fixed bottom-28 left-1/2 z-40 w-[min(92vw,420px)] -translate-x-1/2 rounded-3xl border border-white/15 bg-slate-950/70 p-4 shadow-2xl shadow-cyan-950/40 backdrop-blur-xl">
+        <div className="fixed bottom-[8.5rem] left-1/2 z-40 w-[min(86vw,520px)] -translate-x-1/2 rounded-[1.75rem] border border-white/15 bg-black/45 p-3 shadow-2xl shadow-black/40 backdrop-blur-2xl">
           <textarea
             aria-label="Text command"
             value={command}
             onChange={(event) => setCommand(event.target.value)}
-            className="min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300"
+            className="min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/30"
             placeholder="Type command only if voice is not enough..."
           />
           <div className="mt-3 flex items-center justify-between gap-3">
             <button
-              className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:border-cyan-300"
+              className="cursor-pointer rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-white/60 transition hover:border-white/30 hover:text-white"
               onClick={() => setIsTextOpen(false)}
               type="button"
             >
               Close
             </button>
             <button
-              className="rounded-full bg-cyan-400 px-5 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-full bg-white/85 px-5 py-2 text-xs font-bold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isSubmitting}
               onClick={() => sendCommandText(command, 'text')}
               type="button"
@@ -225,27 +225,30 @@ export default function App() {
         </div>
       ) : null}
 
-      <div className="fixed bottom-8 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/15 bg-slate-950/45 p-2 shadow-2xl shadow-cyan-950/40 backdrop-blur-xl">
+      <div className="fixed bottom-8 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-4">
+        <button
+          aria-label="Open text command input"
+          className="flex w-[min(82vw,420px)] cursor-pointer items-center gap-3 rounded-full border border-white/15 bg-black/35 px-6 py-4 text-left text-sm text-white/35 shadow-2xl shadow-black/30 backdrop-blur-2xl transition hover:border-white/25 hover:bg-white/10 hover:text-white/70"
+          onClick={() => setIsTextOpen((value) => !value)}
+          type="button"
+        >
+          <span className="h-2.5 w-2.5 rounded-full bg-white/35" />
+          <span>{command || 'Type command if needed...'}</span>
+        </button>
         <button
           aria-label="Start voice command"
-          className={`grid h-16 w-16 place-items-center rounded-full border text-sm font-black tracking-tight transition ${
+          className={`grid h-20 w-20 cursor-pointer place-items-center rounded-full border text-sm font-black tracking-tight shadow-2xl shadow-black/40 backdrop-blur-2xl transition ${
             isListening
-              ? 'border-cyan-200 bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-300/30'
-              : 'border-cyan-200/40 bg-cyan-300/15 text-cyan-100 hover:bg-cyan-300/25'
+              ? 'border-white/50 bg-white/65 text-slate-950'
+              : 'border-white/15 bg-white/10 text-white/80 hover:bg-white/20'
           } disabled:cursor-not-allowed disabled:opacity-60`}
           disabled={isSubmitting}
           onClick={isListening ? stopVoiceCommand : startVoiceCommand}
           type="button"
         >
-          {isListening ? '...' : 'AI'}
-        </button>
-        <button
-          aria-label="Open text command input"
-          className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-white/10 text-xs font-bold text-slate-200 transition hover:border-cyan-300 hover:text-white"
-          onClick={() => setIsTextOpen((value) => !value)}
-          type="button"
-        >
-          T
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-white/80 text-slate-900">
+            {isListening ? '...' : '●'}
+          </span>
         </button>
       </div>
 
