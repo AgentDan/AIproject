@@ -421,6 +421,31 @@ Current supported intents:
 
 This pipeline generates Action Plans only. Scene Modules will execute the Action Plan in the next roadmap step.
 
+### Current Scene Modules Pipeline Scope
+
+The current Scene Modules pipeline executes the validated `Action Plan` against the preview scene state and returns a structured `Scene Result` contract.
+
+Current scene module stages:
+
+- **Scene Graph Manager** - creates an executable preview scene graph from Scene Context.
+- **Product Rules Engine** - checks basic MVP action constraints such as movable targets.
+- **Transform Engine** - applies `move_object` transform changes.
+- **Material Engine** - applies `change_object_color` material changes.
+- **Mesh Analysis Engine** - creates bounding boxes and measurement results.
+- **Scene Validation Engine** - validates the updated preview scene state.
+- **Scene Diff Generator** - creates before/after object change records.
+- **GLTF / GLB Exporter** - creates a local export reference placeholder.
+
+Current supported execution actions:
+
+- `move_object`
+- `change_object_color`
+- `show_bounding_boxes`
+- `measure_mesh_distance`
+- `download_updated_scene`
+
+This pipeline still operates on preview scene data. Real GLB/GLTF mutation and export will be connected later.
+
 ## MVP Use Cases
 
 1. Move Object
@@ -461,7 +486,7 @@ This pipeline generates Action Plans only. Scene Modules will execute the Action
 
 ## MVP Roadmap Progress
 
-Current stage: **Step 7 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell, a minimal server API layer, local MVP storage, a Scene Context Builder, and a local AI Services pipeline that creates validated Action Plans from Scene Context. The next planned stage is **Step 8: Create the Scene Modules pipeline**.
+Current stage: **Step 8 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell, a minimal server API layer, local MVP storage, a Scene Context Builder, a local AI Services pipeline, and a Scene Modules pipeline that executes Action Plans into Scene Results. The next planned stage is **Step 9: Connect the full request-to-response loop**.
 
 ```mermaid
 flowchart LR
@@ -481,9 +506,9 @@ flowchart LR
   S4:::done
   S5:::done
   S6:::done
-  S7:::current
-  S8:::next
-  S9:::pending
+  S7:::done
+  S8:::current
+  S9:::next
   S10:::pending
 
   classDef done fill:#16a34a,stroke:#86efac,color:#ffffff
@@ -502,9 +527,9 @@ flowchart LR
 | 4 | Build the server API layer | Done | Added health, API metadata, storage status, and command request endpoints. |
 | 5 | Implement scene storage for MVP | Done | Added local JSON storage for sessions, scene metadata, action history, assets, and exports. |
 | 6 | Create the Scene Context Builder | Done | Builds Scene Context from client request, session, scene metadata, and action history. |
-| 7 | Create the AI services pipeline | Current / Done | Builds prompt, detects intent, understands scene context, generates and validates Action Plan. |
-| 8 | Create the Scene Modules pipeline | Next | Execute validated action plans against scene modules. |
-| 9 | Connect the full request-to-response loop | Pending | Wire client, server, contracts, AI, and scene modules together. |
+| 7 | Create the AI services pipeline | Done | Builds prompt, detects intent, understands scene context, generates and validates Action Plan. |
+| 8 | Create the Scene Modules pipeline | Current / Done | Executes Action Plans and returns Scene Result with preview updates, diff, measurements, and validation. |
+| 9 | Connect the full request-to-response loop | Next | Wire client UI to server API and display response state. |
 | 10 | Validate the MVP user flows | Pending | Test the MVP use cases end to end. |
 
 ## Suggested Project Structure

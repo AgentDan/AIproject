@@ -12,6 +12,7 @@ import {
 } from './storage/local-storage.js';
 import { buildSceneContext } from './core/scene-context-builder.js';
 import { runAiServicesPipeline } from './ai-services/pipeline.js';
+import { executeSceneModulesPipeline } from './scene-modules/pipeline.js';
 
 const port = process.env.PORT || 3001;
 
@@ -149,18 +150,48 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  const sceneModules = await executeSceneModulesPipeline(
+    sceneContext,
+    aiServices.actionPlan
+  );
+
+  if (sceneModules.validationErrors.length > 0 || !sceneModules.sceneResult.validation.valid) {
+    sendJson(response, 500, {
+      ...createClientResponse({
+        requestId: clientRequest.requestId,
+        sessionId: clientRequest.sessionId,
+        sceneId: clientRequest.sceneId,
+        status: CLIENT_RESPONSE_STATUS.ERROR,
+        message: 'Scene Modules pipeline validation failed.',
+        sceneResult: sceneModules.sceneResult,
+        errors: [
+          ...sceneModules.validationErrors,
+          ...sceneModules.sceneResult.validation.errors
+        ]
+      }),
+      clientRequest,
+      storage,
+      sceneContext,
+      aiServices,
+      sceneModules
+    });
+    return;
+  }
+
   sendJson(response, 202, {
     ...createClientResponse({
       requestId: clientRequest.requestId,
       sessionId: clientRequest.sessionId,
       sceneId: clientRequest.sceneId,
       message: 'Command request accepted.',
-      explanation: 'The API layer received and stored the voice/text command, built a Scene Context, and generated a validated Action Plan.'
+      explanation: 'The API layer received and stored the voice/text command, built a Scene Context, generated a validated Action Plan, and executed it through Scene Modules.',
+      sceneResult: sceneModules.sceneResult
     }),
     clientRequest,
     storage,
     sceneContext,
-    aiServices
+    aiServices,
+    sceneModules
   });
 }
 
