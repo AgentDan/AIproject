@@ -345,9 +345,9 @@ The current client UI is intentionally limited to:
 
 - **Voice command input** - the user can speak a command.
 - **Text command input** - the user can type a command directly.
-- **3D Preview** - the user sees the product scene area.
+- **3D Preview** - the user sees the product scene area and the latest pipeline response summary.
 
-The following UI functions are intentionally not shown yet: upload, download, result viewer, object list, scene controls, and action buttons. They can be added later when the backend and scene pipeline are ready.
+The following UI functions are intentionally not shown yet: upload, download, object list, scene controls, and action buttons. They can be added later when the backend and scene pipeline are ready.
 
 ### Current Server API Scope
 
@@ -355,10 +355,10 @@ The current server API layer is intentionally minimal and supports:
 
 - `GET /health` - checks that the server is running.
 - `GET /api` - returns basic API metadata and available endpoints.
-- `POST /api/commands` - accepts a voice/text command request, validates it with shared contracts, stores it in local MVP storage, and returns a structured Client Response placeholder.
+- `POST /api/commands` - accepts a voice/text command request, validates it with shared contracts, stores it in local MVP storage, builds Scene Context, generates Action Plan, executes Scene Modules, and returns a structured Client Response.
 - `GET /api/storage/status` - returns local storage status for sessions, scenes, action history, assets, and exports.
 
-The command endpoint does not call AI or mutate a scene yet. It confirms that the API layer can receive, validate, store, and return a structured response for future pipeline steps.
+The command endpoint still uses local deterministic AI logic and preview scene data. It confirms that the API layer can receive, validate, store, plan, execute, and return a structured response for the MVP loop.
 
 ### Current Storage Scope
 
@@ -419,7 +419,7 @@ Current supported intents:
 - `measure_mesh_distance`
 - `download_updated_scene`
 
-This pipeline generates Action Plans only. Scene Modules will execute the Action Plan in the next roadmap step.
+This pipeline generates Action Plans only. Scene Modules execute those Action Plans in the current backend flow.
 
 ### Current Scene Modules Pipeline Scope
 
@@ -445,6 +445,24 @@ Current supported execution actions:
 - `download_updated_scene`
 
 This pipeline still operates on preview scene data. Real GLB/GLTF mutation and export will be connected later.
+
+### Current Full Request-to-Response Loop Scope
+
+The current client and server are connected for the MVP command flow.
+
+Current full loop:
+
+1. The user types a text command or sends a voice command transcript in `apps/client`.
+2. The client sends `POST /api/commands` to `apps/server`.
+3. The server validates the Client Request.
+4. The server stores session, scene metadata, and action history in local MVP storage.
+5. The server builds Scene Context.
+6. The AI Services pipeline generates and validates an Action Plan.
+7. The Scene Modules pipeline executes the Action Plan against preview scene state.
+8. The server returns Client Response with Scene Context, Action Plan, Scene Result, diff, measurements, and validation.
+9. The client displays response status, Action Plan, Scene Result, diff count, validation status, and preview movement.
+
+This completes the first full backend-to-frontend loop. The next step is end-to-end MVP validation across the target use cases.
 
 ## MVP Use Cases
 
@@ -486,7 +504,7 @@ This pipeline still operates on preview scene data. Real GLB/GLTF mutation and e
 
 ## MVP Roadmap Progress
 
-Current stage: **Step 8 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell, a minimal server API layer, local MVP storage, a Scene Context Builder, a local AI Services pipeline, and a Scene Modules pipeline that executes Action Plans into Scene Results. The next planned stage is **Step 9: Connect the full request-to-response loop**.
+Current stage: **Step 9 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell connected to the server API, local MVP storage, a Scene Context Builder, a local AI Services pipeline, a Scene Modules pipeline, and a full request-to-response loop that displays backend results in the client. The next planned stage is **Step 10: Validate the MVP user flows**.
 
 ```mermaid
 flowchart LR
@@ -507,9 +525,9 @@ flowchart LR
   S5:::done
   S6:::done
   S7:::done
-  S8:::current
-  S9:::next
-  S10:::pending
+  S8:::done
+  S9:::current
+  S10:::next
 
   classDef done fill:#16a34a,stroke:#86efac,color:#ffffff
   classDef current fill:#0891b2,stroke:#67e8f9,color:#ffffff
@@ -528,9 +546,9 @@ flowchart LR
 | 5 | Implement scene storage for MVP | Done | Added local JSON storage for sessions, scene metadata, action history, assets, and exports. |
 | 6 | Create the Scene Context Builder | Done | Builds Scene Context from client request, session, scene metadata, and action history. |
 | 7 | Create the AI services pipeline | Done | Builds prompt, detects intent, understands scene context, generates and validates Action Plan. |
-| 8 | Create the Scene Modules pipeline | Current / Done | Executes Action Plans and returns Scene Result with preview updates, diff, measurements, and validation. |
-| 9 | Connect the full request-to-response loop | Next | Wire client UI to server API and display response state. |
-| 10 | Validate the MVP user flows | Pending | Test the MVP use cases end to end. |
+| 8 | Create the Scene Modules pipeline | Done | Executes Action Plans and returns Scene Result with preview updates, diff, measurements, and validation. |
+| 9 | Connect the full request-to-response loop | Current / Done | Client sends commands to server and displays response state, Action Plan, Scene Result, and validation. |
+| 10 | Validate the MVP user flows | Next | Test the MVP use cases end to end. |
 
 ## Suggested Project Structure
 
