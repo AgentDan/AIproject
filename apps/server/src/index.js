@@ -10,6 +10,7 @@ import {
   getStorageStatus,
   recordCommandRequest
 } from './storage/local-storage.js';
+import { buildSceneContext } from './core/scene-context-builder.js';
 
 const port = process.env.PORT || 3001;
 
@@ -108,16 +109,36 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  const { sceneContext, validationErrors: sceneContextErrors } =
+    await buildSceneContext(clientRequest);
+
+  if (sceneContextErrors.length > 0) {
+    sendJson(response, 500, {
+      ...createClientResponse({
+        requestId: clientRequest.requestId,
+        sessionId: clientRequest.sessionId,
+        sceneId: clientRequest.sceneId,
+        status: CLIENT_RESPONSE_STATUS.ERROR,
+        message: 'Scene Context validation failed.',
+        errors: sceneContextErrors
+      }),
+      clientRequest,
+      storage
+    });
+    return;
+  }
+
   sendJson(response, 202, {
     ...createClientResponse({
       requestId: clientRequest.requestId,
       sessionId: clientRequest.sessionId,
       sceneId: clientRequest.sceneId,
       message: 'Command request accepted.',
-      explanation: 'The API layer received and stored the voice/text command. Scene context and AI processing will be connected in later roadmap steps.'
+      explanation: 'The API layer received and stored the voice/text command, then built a Scene Context for future AI processing.'
     }),
     clientRequest,
-    storage
+    storage,
+    sceneContext
   });
 }
 

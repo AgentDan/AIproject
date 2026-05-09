@@ -373,6 +373,30 @@ Current storage responsibilities:
 
 This storage layer is a development replacement for future S3 and database integrations.
 
+### Current Scene Context Builder Scope
+
+The current Scene Context Builder reads local storage and creates a structured `Scene Context` contract for future AI processing.
+
+Current context inputs:
+
+- **Client Request** - request ID, session ID, scene ID, input type, command, and client state.
+- **Session data** - latest request and scene associated with the session.
+- **Scene metadata** - current preview scene metadata from local storage.
+- **Action history** - previous commands recorded for the session.
+
+Current context output:
+
+- `sceneId`
+- `sessionId`
+- `sourceUri`
+- preview `objects`
+- preview `hierarchy`
+- preview `materials`
+- metadata with session, scene, and action history
+- command context for the current voice/text command
+
+This builder does not parse a real GLB/GLTF scene yet. It creates the contract shape that the future AI services pipeline will consume.
+
 ## MVP Use Cases
 
 1. Move Object
@@ -413,7 +437,7 @@ This storage layer is a development replacement for future S3 and database integ
 
 ## MVP Roadmap Progress
 
-Current stage: **Step 5 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell with only voice/text command input and a 3D preview, a minimal server API layer, and local MVP storage for sessions, scene metadata, and action history. The next planned stage is **Step 6: Create the Scene Context Builder**.
+Current stage: **Step 6 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell, a minimal server API layer, local MVP storage, and a Scene Context Builder that assembles context from client requests, sessions, scene metadata, and action history. The next planned stage is **Step 7: Create the AI services pipeline**.
 
 ```mermaid
 flowchart LR
@@ -431,9 +455,9 @@ flowchart LR
   S2:::done
   S3:::done
   S4:::done
-  S5:::current
-  S6:::next
-  S7:::pending
+  S5:::done
+  S6:::current
+  S7:::next
   S8:::pending
   S9:::pending
   S10:::pending
@@ -452,9 +476,9 @@ flowchart LR
 | 2 | Define shared data contracts | Done | `packages/contracts` contains JavaScript contract factories and validators. |
 | 3 | Build the client MVP shell | Done | UI is now limited to voice/text command input and 3D preview. |
 | 4 | Build the server API layer | Done | Added health, API metadata, storage status, and command request endpoints. |
-| 5 | Implement scene storage for MVP | Current / Done | Added local JSON storage for sessions, scene metadata, action history, assets, and exports. |
-| 6 | Create the Scene Context Builder | Next | Build context from scene data and user command. |
-| 7 | Create the AI services pipeline | Pending | Build prompt, intent detection, action plan generation, validation, and retry flow. |
+| 5 | Implement scene storage for MVP | Done | Added local JSON storage for sessions, scene metadata, action history, assets, and exports. |
+| 6 | Create the Scene Context Builder | Current / Done | Builds Scene Context from client request, session, scene metadata, and action history. |
+| 7 | Create the AI services pipeline | Next | Build prompt, intent detection, action plan generation, validation, and retry flow. |
 | 8 | Create the Scene Modules pipeline | Pending | Execute validated action plans against scene modules. |
 | 9 | Connect the full request-to-response loop | Pending | Wire client, server, contracts, AI, and scene modules together. |
 | 10 | Validate the MVP user flows | Pending | Test the MVP use cases end to end. |

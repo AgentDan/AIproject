@@ -99,6 +99,14 @@ export async function saveSession(session) {
   };
 }
 
+export async function getSession(sessionId) {
+  await ensureStorage();
+
+  const safeSessionId = sanitizeId(sessionId, 'local-session');
+  const filePath = path.join(storagePaths.sessions, `${safeSessionId}.json`);
+  return readJsonFile(filePath, null);
+}
+
 export async function saveSceneMetadata(sceneMetadata) {
   await ensureStorage();
 
@@ -121,6 +129,14 @@ export async function saveSceneMetadata(sceneMetadata) {
   };
 }
 
+export async function getSceneMetadata(sceneId) {
+  await ensureStorage();
+
+  const safeSceneId = sanitizeId(sceneId, 'preview-scene');
+  const filePath = path.join(storagePaths.scenes, safeSceneId, 'metadata.json');
+  return readJsonFile(filePath, null);
+}
+
 export async function appendActionHistory(sessionId, actionEntry) {
   await ensureStorage();
 
@@ -140,6 +156,14 @@ export async function appendActionHistory(sessionId, actionEntry) {
     filePath,
     count: nextHistory.length
   };
+}
+
+export async function getActionHistory(sessionId) {
+  await ensureStorage();
+
+  const safeSessionId = sanitizeId(sessionId, 'local-session');
+  const filePath = path.join(storagePaths.actionHistory, `${safeSessionId}.json`);
+  return readJsonFile(filePath, []);
 }
 
 export async function recordCommandRequest(clientRequest) {
