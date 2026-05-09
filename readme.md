@@ -355,9 +355,23 @@ The current server API layer is intentionally minimal and supports:
 
 - `GET /health` - checks that the server is running.
 - `GET /api` - returns basic API metadata and available endpoints.
-- `POST /api/commands` - accepts a voice/text command request, validates it with shared contracts, and returns a structured Client Response placeholder.
+- `POST /api/commands` - accepts a voice/text command request, validates it with shared contracts, stores it in local MVP storage, and returns a structured Client Response placeholder.
+- `GET /api/storage/status` - returns local storage status for sessions, scenes, action history, assets, and exports.
 
-The command endpoint does not call AI or mutate a scene yet. It only confirms that the API layer can receive, validate, and return a structured response for future pipeline steps.
+The command endpoint does not call AI or mutate a scene yet. It confirms that the API layer can receive, validate, store, and return a structured response for future pipeline steps.
+
+### Current Storage Scope
+
+The current storage layer is local-only and intended for MVP development. It writes JSON files under `apps/server/data/`, which is ignored by Git.
+
+Current storage responsibilities:
+
+- **Sessions** - stores the latest request and scene associated with a session.
+- **Scene metadata** - stores basic metadata for the preview scene.
+- **Action history** - appends received voice/text commands for each session.
+- **Assets / exports directories** - prepared as local folders for future GLB/GLTF source files and exported scenes.
+
+This storage layer is a development replacement for future S3 and database integrations.
 
 ## MVP Use Cases
 
@@ -399,7 +413,7 @@ The command endpoint does not call AI or mutate a scene yet. It only confirms th
 
 ## MVP Roadmap Progress
 
-Current stage: **Step 4 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell with only voice/text command input and a 3D preview, and a minimal server API layer for health checks, API metadata, and command requests. The next planned stage is **Step 5: Implement scene storage for MVP**.
+Current stage: **Step 5 is complete**. We have a stable project foundation, shared JavaScript data contracts, a simplified client shell with only voice/text command input and a 3D preview, a minimal server API layer, and local MVP storage for sessions, scene metadata, and action history. The next planned stage is **Step 6: Create the Scene Context Builder**.
 
 ```mermaid
 flowchart LR
@@ -416,9 +430,9 @@ flowchart LR
   S1:::done
   S2:::done
   S3:::done
-  S4:::current
-  S5:::next
-  S6:::pending
+  S4:::done
+  S5:::current
+  S6:::next
   S7:::pending
   S8:::pending
   S9:::pending
@@ -437,9 +451,9 @@ flowchart LR
 | 1 | Stabilize the project foundation | Done | `npm run dev` starts client and server from the root. |
 | 2 | Define shared data contracts | Done | `packages/contracts` contains JavaScript contract factories and validators. |
 | 3 | Build the client MVP shell | Done | UI is now limited to voice/text command input and 3D preview. |
-| 4 | Build the server API layer | Current / Done | Added health, API metadata, and command request endpoints. |
-| 5 | Implement scene storage for MVP | Next | Add local development storage before S3/DB integration. |
-| 6 | Create the Scene Context Builder | Pending | Build context from scene data and user command. |
+| 4 | Build the server API layer | Done | Added health, API metadata, storage status, and command request endpoints. |
+| 5 | Implement scene storage for MVP | Current / Done | Added local JSON storage for sessions, scene metadata, action history, assets, and exports. |
+| 6 | Create the Scene Context Builder | Next | Build context from scene data and user command. |
 | 7 | Create the AI services pipeline | Pending | Build prompt, intent detection, action plan generation, validation, and retry flow. |
 | 8 | Create the Scene Modules pipeline | Pending | Execute validated action plans against scene modules. |
 | 9 | Connect the full request-to-response loop | Pending | Wire client, server, contracts, AI, and scene modules together. |

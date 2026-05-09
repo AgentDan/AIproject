@@ -6,6 +6,10 @@ import {
   createClientResponse,
   validateClientRequest
 } from '@ai-product-scene-platform/contracts';
+import {
+  getStorageStatus,
+  recordCommandRequest
+} from './storage/local-storage.js';
 
 const port = process.env.PORT || 3001;
 
@@ -86,15 +90,34 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  let storage;
+
+  try {
+    storage = await recordCommandRequest(clientRequest);
+  } catch (error) {
+    sendJson(response, 500, {
+      ...createClientResponse({
+        requestId: clientRequest.requestId,
+        sessionId: clientRequest.sessionId,
+        sceneId: clientRequest.sceneId,
+        status: CLIENT_RESPONSE_STATUS.ERROR,
+        message: 'Command request could not be stored.',
+        errors: [error.message]
+      })
+    });
+    return;
+  }
+
   sendJson(response, 202, {
     ...createClientResponse({
       requestId: clientRequest.requestId,
       sessionId: clientRequest.sessionId,
       sceneId: clientRequest.sceneId,
       message: 'Command request accepted.',
-      explanation: 'The API layer received the voice/text command. Scene context and AI processing will be connected in later roadmap steps.'
+      explanation: 'The API layer received and stored the voice/text command. Scene context and AI processing will be connected in later roadmap steps.'
     }),
-    clientRequest
+    clientRequest,
+    storage
   });
 }
 
@@ -121,9 +144,15 @@ const server = http.createServer(async (request, response) => {
       endpoints: [
         'GET /health',
         'GET /api',
+        'GET /api/storage/status',
         'POST /api/commands'
       ]
     });
+    return;
+  }
+
+  if (method === 'GET' && url === '/api/storage/status') {
+    sendJson(response, 200, await getStorageStatus());
     return;
   }
 
