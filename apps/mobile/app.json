@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "MyProject",
+    "slug": "myproject-snack",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#6650a4"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.devweb.androidtwo.colortest"
+    },
+    "android": {
+      "package": "com.devweb.androidtwo.colortest",
+      "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bb150ff5-9ace-43f9-bb05-a168dcbd5fa0"
+      }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

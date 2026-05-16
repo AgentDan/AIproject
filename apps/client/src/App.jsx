@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+function getSpeechRecognitionCtor() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
 export default function App() {
   const [command, setCommand] = useState('');
   const [inputType, setInputType] = useState('voice');
@@ -10,7 +17,55 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [serverNotice, setServerNotice] = useState(null);
+  const [commandBarExpanded, setCommandBarExpanded] = useState(false);
   const recognitionRef = useRef(null);
+  const textInputRef = useRef(null);
+  const commandBarRef = useRef(null);
+  const isListeningRef = useRef(isListening);
+  const isSubmittingRef = useRef(isSubmitting);
+  isListeningRef.current = isListening;
+  isSubmittingRef.current = isSubmitting;
+
+  const canUseSpeech = !!getSpeechRecognitionCtor();
+  const showCommandField =
+    !canUseSpeech ||
+    commandBarExpanded ||
+    isListening ||
+    (isSubmitting && inputType === 'voice');
+
+  useEffect(() => {
+    if (!showCommandField) {
+      return undefined;
+    }
+    const id = window.requestAnimationFrame(() => {
+      textInputRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [showCommandField]);
+
+  useEffect(() => {
+    if (!canUseSpeech) {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      const root = commandBarRef.current;
+      if (!root?.contains(event.target)) {
+        if (isSubmittingRef.current) {
+          return;
+        }
+        if (isListeningRef.current) {
+          recognitionRef.current?.stop();
+          recognitionRef.current = null;
+          setIsListening(false);
+        }
+        setCommandBarExpanded(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [canUseSpeech]);
 
   useEffect(() => {
     if (!serverNotice) {
@@ -33,7 +88,9 @@ export default function App() {
       setServerNotice({
         type: 'error',
         title: 'No command detected',
-        message: 'Please speak a command or open text input and type one.'
+        message: canUseSpeech
+          ? 'Use the round button or Enter: when empty, speak; when there is text, send.'
+          : 'Type a command, then press Enter or the round send button.'
       });
       return;
     }
@@ -41,6 +98,8 @@ export default function App() {
     setInputType(nextInputType);
     setError('');
     setIsSubmitting(true);
+
+    let commandDelivered = false;
 
     try {
       const apiResponse = await fetch(`${apiBaseUrl}/api/commands`, {
@@ -71,6 +130,7 @@ export default function App() {
         intent: payload.aiServices?.actionPlan?.intent,
         resultStatus: payload.sceneResult?.status
       });
+      commandDelivered = true;
     } catch (requestError) {
       setResponse(null);
       setError(requestError.message);
@@ -82,25 +142,31 @@ export default function App() {
     } finally {
       setIsSubmitting(false);
       setIsListening(false);
+      if (canUseSpeech && commandDelivered) {
+        setCommandBarExpanded(false);
+        setCommand('');
+      }
     }
   }
 
   function startVoiceCommand() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = getSpeechRecognitionCtor();
 
     if (!SpeechRecognition) {
       setServerNotice({
         type: 'error',
         title: 'Voice input unavailable',
-        message: 'This browser does not expose speech recognition. Use the text input instead.'
+        message: 'This browser does not expose speech recognition. Type your command in the field below.'
       });
       return;
     }
 
+    setCommandBarExpanded(true);
+
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     recognition.lang = 'en-US';
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
@@ -119,9 +185,12 @@ export default function App() {
     };
 
     recognition.onresult = (event) => {
-      const transcript = event.results?.[0]?.[0]?.transcript || '';
-      setCommand(transcript);
-      sendCommandText(transcript, 'voice');
+      let line = '';
+      for (let i = 0; i < event.results.length; i += 1) {
+        line += event.results[i][0]?.transcript || '';
+      }
+      setInputType('voice');
+      setCommand(line);
     };
 
     recognition.onend = () => {
@@ -136,6 +205,29 @@ export default function App() {
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     setIsListening(false);
+  }
+
+  function handleRoundCommandButton() {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (!canUseSpeech) {
+      sendCommandText(command, 'text');
+      return;
+    }
+
+    if (isListening) {
+      stopVoiceCommand();
+      return;
+    }
+
+    if (command.trim()) {
+      sendCommandText(command, inputType);
+      return;
+    }
+
+    startVoiceCommand();
   }
 
   const sceneResult = response?.sceneResult;
@@ -194,43 +286,73 @@ export default function App() {
         </div>
       ) : null}
 
-      <div className="fixed bottom-7 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-5">
-        <div className="flex w-[min(84vw,480px)] items-center gap-3 rounded-full border border-white/15 bg-black/35 px-5 py-3 shadow-2xl shadow-black/30 backdrop-blur-2xl transition focus-within:border-white/30">
-          <span className="h-2.5 w-2.5 rounded-full bg-white/35" />
-          <input
-            aria-label="Text or voice transcript command"
-            value={command}
-            onChange={(event) => setCommand(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                sendCommandText(command, 'text');
+      <div
+        ref={commandBarRef}
+        className={`fixed bottom-7 left-1/2 z-40 flex max-w-[min(92vw,520px)] -translate-x-1/2 items-center rounded-full border border-white/15 bg-black/35 shadow-2xl shadow-black/30 backdrop-blur-2xl transition-[padding,width] duration-300 ease-out focus-within:border-white/30 ${
+          showCommandField ? 'w-[min(92vw,520px)] gap-3 px-4 py-2.5' : 'w-auto gap-0 px-2 py-2'
+        }`}
+      >
+        {showCommandField ? (
+          <>
+            <span
+              className={`ml-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                isListening ? 'animate-pulse bg-emerald-400/90' : 'bg-white/35'
+              }`}
+            />
+            <input
+              ref={textInputRef}
+              aria-label={
+                isListening ? 'Voice and keyboard command — speech fills this field as you talk' : 'Type command'
               }
-            }}
-            className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
-            placeholder="Type command if needed..."
-          />
-          <button
-            aria-label="Send text command"
-            className="cursor-pointer rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white/70 transition hover:border-white/30 hover:bg-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isSubmitting}
-            onClick={() => sendCommandText(command, 'text')}
-            type="button"
-          >
-            {isSubmitting && inputType === 'text' ? '...' : 'T'}
-          </button>
-        </div>
+              value={command}
+              onChange={(event) => {
+                setInputType('text');
+                setCommand(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') {
+                  return;
+                }
+                event.preventDefault();
+                handleRoundCommandButton();
+              }}
+              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+              placeholder="Type command"
+            />
+          </>
+        ) : null}
         <button
-          aria-label="Start voice command"
-          className={`grid h-12 w-12 cursor-pointer place-items-center rounded-full border text-sm font-black tracking-tight shadow-2xl shadow-black/40 backdrop-blur-2xl transition ${
+          type="button"
+          aria-label={
+            isListening
+              ? 'Stop recording'
+              : command.trim()
+                ? 'Send command'
+                : canUseSpeech
+                  ? 'Open command line and start voice'
+                  : 'Send command'
+          }
+          aria-expanded={showCommandField}
+          title={
+            canUseSpeech
+              ? isListening
+                ? 'Stop recording'
+                : command.trim()
+                  ? 'Send this command'
+                  : 'Speak — opens the command line'
+              : 'Send command'
+          }
+          className={`grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full border text-sm font-black tracking-tight transition ${
             isListening
               ? 'border-white/50 bg-white/65 text-slate-950'
-              : 'border-white/15 bg-white/10 text-white/80 hover:bg-white/20'
+              : command.trim()
+                ? 'border-emerald-400/55 bg-emerald-500/25 text-emerald-100 shadow-lg shadow-emerald-500/20 hover:border-emerald-300/70 hover:bg-emerald-500/35'
+                : 'border-white/15 bg-white/10 text-white/80 hover:bg-white/20'
           } disabled:cursor-not-allowed disabled:opacity-60`}
-          disabled={isSubmitting}
-          onClick={isListening ? stopVoiceCommand : startVoiceCommand}
-          type="button"
+          disabled={isSubmitting || (!canUseSpeech && !command.trim())}
+          onClick={handleRoundCommandButton}
         >
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-white/80 text-slate-900">
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-white/80 text-slate-900">
             {isListening ? '...' : '●'}
           </span>
         </button>

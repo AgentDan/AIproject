@@ -184,7 +184,7 @@ async function handleCommandRequest(request, response) {
       sessionId: clientRequest.sessionId,
       sceneId: clientRequest.sceneId,
       message: 'Command request accepted.',
-      explanation: 'The API layer received and stored the voice/text command, built a Scene Context, generated a validated Action Plan, and executed it through Scene Modules.',
+      explanation: 'Hello world! The API layer received and stored the voice/text command, built a Scene Context, generated a validated Action Plan, and executed it through Scene Modules.',
       sceneResult: sceneModules.sceneResult
     }),
     clientRequest,
