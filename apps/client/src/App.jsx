@@ -2,6 +2,30 @@ import { useEffect, useRef, useState } from 'react';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+/** @param {{ intents?: unknown[] }} props */
+function HelpIntentListInsideNotice({ intents = [] }) {
+  if (!Array.isArray(intents) || intents.length === 0) {
+    return <p className="mt-2 text-xs text-white/55">No intent entries returned.</p>;
+  }
+
+  return (
+    <ul className="space-y-2 pr-1">
+      {intents.map((raw, idx) => {
+        const entry = raw && typeof raw === 'object' ? raw : {};
+        const typeLabel = typeof entry.type === 'string' ? entry.type : `intent-${idx}`;
+
+        return (
+          <li key={`${typeLabel}-${idx}`}>
+            <div className="rounded-xl border border-white/12 bg-black/35 px-3 py-2">
+              <span className="font-mono text-[13px] font-semibold text-emerald-200/95">{typeLabel}</span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function getSpeechRecognitionCtor() {
   if (typeof window === 'undefined') {
     return null;
@@ -21,6 +45,7 @@ export default function App() {
   const recognitionRef = useRef(null);
   const textInputRef = useRef(null);
   const commandBarRef = useRef(null);
+  const serverNoticeRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const isListeningRef = useRef(isListening);
   const isSubmittingRef = useRef(isSubmitting);
   isListeningRef.current = isListening;
@@ -72,11 +97,15 @@ export default function App() {
       return undefined;
     }
 
-    const timeoutId = window.setTimeout(() => {
+    function handlePointerDown(/** @type {PointerEvent} */ event) {
+      if (!serverNoticeRef.current || serverNoticeRef.current.contains(/** @type {Node | null} */ (event.target))) {
+        return;
+      }
       setServerNotice(null);
-    }, 5200);
+    }
 
-    return () => window.clearTimeout(timeoutId);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [serverNotice]);
 
   async function sendCommandText(commandText, nextInputType = inputType) {
@@ -125,10 +154,24 @@ export default function App() {
       setResponse(payload);
       setServerNotice({
         type: 'success',
-        title: payload.message || 'Command accepted',
-        message: payload.explanation || 'The server processed the command.',
-        intent: payload.aiServices?.actionPlan?.intent,
-        resultStatus: payload.sceneResult?.status
+        responseType: payload.responseType,
+        message:
+          payload.responseType === 'help'
+            ? (payload.message && String(payload.message).trim().length > 0
+                ? String(payload.message).trim()
+                : 'Supported intents.')
+            : payload.explanation || 'The server processed the command.',
+        intent:
+          payload.responseType === 'help'
+            ? undefined
+            : payload.aiServices?.actionPlan?.intent,
+        resultStatus:
+          payload.responseType === 'help'
+            ? payload.responseType
+            : payload.sceneResult?.status,
+        helpIntents: payload.responseType === 'help'
+          ? (payload.help?.intents ?? [])
+          : undefined
       });
       commandDelivered = true;
     } catch (requestError) {
@@ -255,32 +298,54 @@ export default function App() {
       </section>
 
       {serverNotice ? (
-        <div className="fixed left-1/2 top-[24%] z-50 w-[min(88vw,640px)] -translate-x-1/2 rounded-[2rem] border border-white/15 bg-white/15 px-8 py-6 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-2xl">
-          <div className="flex items-start gap-4">
+        <div
+          ref={serverNoticeRef}
+          className={`fixed left-1/2 top-[24%] z-50 flex w-[min(88vw,640px)] -translate-x-1/2 flex-col rounded-[2rem] border border-white/15 bg-white/15 px-8 py-6 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-2xl ${
+            serverNotice.responseType === 'help' ? 'max-h-[min(78vh,560px)]' : ''
+          }`}
+        >
+          <div
+            className={`flex items-start gap-4 ${
+              serverNotice.responseType === 'help' ? 'min-h-0 flex-1' : ''
+            }`}
+          >
             <span
-              className={`mt-1.5 h-3.5 w-3.5 rounded-full shadow-lg ${
+              className={`mt-1.5 shrink-0 h-3.5 w-3.5 rounded-full shadow-lg ${
                 serverNotice.type === 'error' ? 'bg-red-300' : 'bg-emerald-300'
               }`}
             />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-white/45">
+            <div className={`flex min-h-0 flex-1 flex-col ${serverNotice.responseType === 'help' ? 'gap-0' : ''}`}>
+              <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.35em] text-white/45">
                 AI Response
               </p>
-              <p className="mt-3 leading-6 text-white/90">{serverNotice.message}</p>
-              {serverNotice.intent || serverNotice.resultStatus ? (
-                <div className="mt-4 flex flex-wrap gap-3">
-                  {serverNotice.intent ? (
+              <p className="mt-3 shrink-0 whitespace-pre-wrap leading-6 text-white/90">
+                {serverNotice.message}
+              </p>
+              {serverNotice.responseType === 'help' ?
+                <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 pt-1">
+                  <HelpIntentListInsideNotice intents={serverNotice.helpIntents} />
+                </div>
+              : null}
+              {serverNotice.responseType === 'help' ?
+                <div className="mt-4 flex shrink-0 flex-wrap gap-3 border-t border-white/10 pt-4">
+                  <div className="rounded-full bg-white/10 px-4 py-2">
+                    <p className="text-xs font-semibold text-white/75">help</p>
+                  </div>
+                </div>
+              : (serverNotice.intent || serverNotice.resultStatus) ?
+                <div className="mt-4 flex shrink-0 flex-wrap gap-3">
+                  {serverNotice.intent ?
                     <div className="rounded-full bg-white/10 px-4 py-2">
                       <p className="text-xs font-semibold text-white/75">{serverNotice.intent}</p>
                     </div>
-                  ) : null}
-                  {serverNotice.resultStatus ? (
+                  : null}
+                  {serverNotice.resultStatus ?
                     <div className="rounded-full bg-white/10 px-4 py-2">
                       <p className="text-xs font-semibold text-white/75">{serverNotice.resultStatus}</p>
                     </div>
-                  ) : null}
+                  : null}
                 </div>
-              ) : null}
+              : null}
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@
     "apps/client",
     "apps/mobile",
     "apps/server",
+    "packages/ai",
     "packages/contracts"
   ],
   "scripts": {

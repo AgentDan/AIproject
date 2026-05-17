@@ -24,6 +24,14 @@ export {
 
 export {
   CLIENT_RESPONSE_STATUS,
+  CLIENT_RESPONSE_TYPE,
   createClientResponse,
   validateClientResponse
 } from './client-response.js';
+
+export {
+  createIntentHelpEntry,
+  createHelpResponse,
+  validateHelpResponse,
+  validateIntentHelpEntry
+} from './help-response.js';

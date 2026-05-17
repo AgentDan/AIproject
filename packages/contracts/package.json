@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Shared JavaScript data contracts for the AI Product Scene Platform MVP.",
+  "dependencies": {
+    "@ai-product-scene-platform/ai": "0.1.0"
+  },
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js"

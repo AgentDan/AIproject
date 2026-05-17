@@ -8,6 +8,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
+    "@ai-product-scene-platform/ai": "0.1.0",
     "@ai-product-scene-platform/contracts": "0.1.0"
   }
 }

@@ -1,0 +1,22 @@
+{
+  "name": "@ai-product-scene-platform/ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Intent registry and AI-adjacent static knowledge for the platform.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

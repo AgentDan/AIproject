@@ -1,10 +1,6 @@
-export const ACTION_TYPES = Object.freeze({
-  MOVE_OBJECT: 'move_object',
-  SHOW_BOUNDING_BOXES: 'show_bounding_boxes',
-  MEASURE_MESH_DISTANCE: 'measure_mesh_distance',
-  CHANGE_OBJECT_COLOR: 'change_object_color',
-  DOWNLOAD_UPDATED_SCENE: 'download_updated_scene'
-});
+import { ACTION_TYPES } from '@ai-product-scene-platform/ai';
+
+export { ACTION_TYPES };
 
 export function createActionStep({
   stepId,

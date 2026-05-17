@@ -1,6 +1,7 @@
 import http from 'node:http';
 import {
   CLIENT_RESPONSE_STATUS,
+  CLIENT_RESPONSE_TYPE,
   COMMAND_INPUT_TYPES,
   createClientRequest,
   createClientResponse,
@@ -10,6 +11,7 @@ import {
   getStorageStatus,
   recordCommandRequest
 } from './storage/local-storage.js';
+import { processRequest } from './core/orchestrator.js';
 import { buildSceneContext } from './core/scene-context-builder.js';
 import { runAiServicesPipeline } from './ai-services/pipeline.js';
 import { executeSceneModulesPipeline } from './scene-modules/pipeline.js';
@@ -68,18 +70,24 @@ async function handleCommandRequest(request, response) {
     });
     return;
   }
-
+  // Этот участок кода создает объект clientRequest на основе данных, полученных из тела запроса.
+  // Если каких-то значений нет, используются значения по умолчанию.
   const clientRequest = createClientRequest({
-    requestId: body.requestId || createId('request'),
-    sessionId: body.sessionId || 'local-session',
-    sceneId: body.sceneId || 'preview-scene',
-    inputType: body.inputType || COMMAND_INPUT_TYPES.TEXT,
-    command: body.command,
-    clientState: body.clientState || {}
+    requestId: body.requestId || createId('request'),       // id запроса, сгенерированный если не задан
+    sessionId: body.sessionId || 'local-session',           // id сессии, по умолчанию 'local-session'
+    sceneId: body.sceneId || 'preview-scene',               // id сцены, по умолчанию 'preview-scene'
+    inputType: body.inputType || COMMAND_INPUT_TYPES.TEXT,  // тип ввода, по умолчанию текстовый
+    command: body.command,                                  // сама команда пользователя
+    clientState: body.clientState || {}                     // состояние клиента, по умолчанию пустой объект
   });
+  // Этот участок кода проверяет валидность объекта clientRequest.
+  // Если есть ошибки, сервер отправляет клиенту сообщение об ошибке.
   const validationErrors = validateClientRequest(clientRequest);
 
   if (validationErrors.length > 0) {
+    // Если есть ошибки, сервер отправляет клиенту сообщение об ошибке.
+    // Создается объект clientResponse с ошибками валидации.
+    // Отправляется клиенту в формате JSON.
     sendJson(response, 400, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
@@ -93,11 +101,16 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  // Этот участок кода записывает данные запроса в хранилище.
+  // Если запись не удалась, сервер отправляет клиенту сообщение об ошибке.
   let storage;
 
   try {
     storage = await recordCommandRequest(clientRequest);
   } catch (error) {
+    // Если запись не удалась, сервер отправляет клиенту сообщение об ошибке.
+    // Создается объект clientResponse с ошибкой.
+    // Отправляется клиенту в формате JSON.
     sendJson(response, 500, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
@@ -111,10 +124,22 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  const earlyOutcome = processRequest(clientRequest, storage);
+
+  if (earlyOutcome.completed) {
+    sendJson(response, earlyOutcome.statusCode, earlyOutcome.payload);
+    return;
+  }
+
+  // Этот участок кода строит контекст сцены на основе данных запроса.
+  // Если есть ошибки, сервер отправляет клиенту сообщение об ошибке.
   const { sceneContext, validationErrors: sceneContextErrors } =
     await buildSceneContext(clientRequest);
 
   if (sceneContextErrors.length > 0) {
+    // Если есть ошибки, сервер отправляет клиенту сообщение об ошибке.
+    // Создается объект clientResponse с ошибкой.
+    // Отправляется клиенту в формате JSON.
     sendJson(response, 500, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
@@ -130,9 +155,14 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  // Этот участок кода запускает конвейер AI сервисов на основе контекста сцены.
+  // Если есть ошибки, сервер отправляет клиенту сообщение об ошибке.
   const aiServices = await runAiServicesPipeline(sceneContext);
 
   if (!aiServices.validation.valid) {
+    // Если есть ошибки, сервер отправляет клиенту сообщение об ошибке.
+    // Создается объект clientResponse с ошибкой.
+    // Отправляется клиенту в формате JSON.
     sendJson(response, 500, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
@@ -150,12 +180,17 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  // Этот участок кода запускает конвейер сцены модулей на основе контекста сцены и плана действий.
+  // Если есть ошибки, сервер отправляет клиенту сообщение об ошибке.
   const sceneModules = await executeSceneModulesPipeline(
     sceneContext,
     aiServices.actionPlan
   );
 
   if (sceneModules.validationErrors.length > 0 || !sceneModules.sceneResult.validation.valid) {
+    // Если есть ошибки, сервер отправляет клиенту сообщение об ошибке.
+    // Создается объект clientResponse с ошибкой.
+    // Отправляется клиенту в формате JSON.
     sendJson(response, 500, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
@@ -178,13 +213,18 @@ async function handleCommandRequest(request, response) {
     return;
   }
 
+  // Этот участок кода отправляет клиенту результат выполнения команды.
+  // Создается объект clientResponse с результатом выполнения команды.
+  // Отправляется клиенту в формате JSON.
   sendJson(response, 202, {
     ...createClientResponse({
       requestId: clientRequest.requestId,
       sessionId: clientRequest.sessionId,
       sceneId: clientRequest.sceneId,
+      responseType: CLIENT_RESPONSE_TYPE.SCENE,
       message: 'Command request accepted.',
-      explanation: 'Hello world! The API layer received and stored the voice/text command, built a Scene Context, generated a validated Action Plan, and executed it through Scene Modules.',
+      explanation:
+        'Hello world! The API layer received and stored the voice/text command, built a Scene Context, generated a validated Action Plan, and executed it through Scene Modules.',
       sceneResult: sceneModules.sceneResult
     }),
     clientRequest,
