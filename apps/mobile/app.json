@@ -4,10 +4,10 @@
     "slug": "myproject-snack",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#6650a4"
+      "backgroundColor": "#020617"
     },
     "ios": {
       "supportsTablet": true,
