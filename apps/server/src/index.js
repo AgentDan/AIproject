@@ -16,7 +16,9 @@ import { buildSceneContext } from './core/scene-context-builder.js';
 import { runAiServicesPipeline } from './ai-services/pipeline.js';
 import { executeSceneModulesPipeline } from './scene-modules/pipeline.js';
 
-const port = process.env.PORT || 3001;
+const port = Number(process.env.PORT) || 3001;
+/** In containers and PaaS, bind all interfaces so the port is reachable from outside localhost. */
+const host = process.env.HOST || '0.0.0.0';
 
 function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -282,6 +284,6 @@ const server = http.createServer(async (request, response) => {
   });
 });
 
-server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+server.listen(port, host, () => {
+  console.log(`Server is running on http://${host}:${port}`);
 });
