@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const configuredApi = import.meta.env.VITE_API_URL?.trim?.() ?? '';
+/** Prod без env → относительный URL (тот же домен/https за nginx). Dev → API на localhost:3001. */
+const apiBaseUrl =
+  configuredApi !== ''
+    ? configuredApi
+    : import.meta.env.DEV
+      ? 'http://localhost:3001'
+      : '';
 
 /** @param {{ intents?: unknown[] }} props */
 function HelpIntentListInsideNotice({ intents = [] }) {
