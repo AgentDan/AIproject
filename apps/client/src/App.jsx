@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const rawEnvApi = import.meta.env.VITE_API_URL;
+const configuredApi = typeof rawEnvApi === 'string' ? rawEnvApi.trim() : '';
+/** Prod без env → запросы на тот же origin (/api за nginx). Dev → localhost:3001. */
+const apiBaseUrl =
+  configuredApi !== ''
+    ? configuredApi
+    : import.meta.env.DEV
+      ? 'http://localhost:3001'
+      : '';
 
 /** @param {{ intents?: unknown[] }} props */
 function HelpIntentListInsideNotice({ intents = [] }) {
@@ -145,7 +153,14 @@ export default function App() {
           }
         })
       });
-      const payload = await apiResponse.json();
+      let payload;
+      try {
+        payload = await apiResponse.json();
+      } catch {
+        throw new Error(
+          `Bad response (${apiResponse.status}). Expected JSON from /api/commands.`
+        );
+      }
 
       if (!apiResponse.ok) {
         throw new Error(payload.message || 'Command request failed.');
@@ -175,12 +190,19 @@ export default function App() {
       });
       commandDelivered = true;
     } catch (requestError) {
+      const raw =
+        requestError instanceof Error ? requestError.message : String(requestError);
+      const looksLikeNetwork =
+        raw === 'Failed to fetch' || /network/i.test(raw);
+      const message = looksLikeNetwork
+        ? 'Network error: cannot reach API. Production builds use same-origin /api unless VITE_API_URL is set.'
+        : raw;
       setResponse(null);
-      setError(requestError.message);
+      setError(message);
       setServerNotice({
         type: 'error',
         title: 'Server response error',
-        message: requestError.message
+        message
       });
     } finally {
       setIsSubmitting(false);
