@@ -42,7 +42,7 @@ export async function handlePostCommands(req, res) {
         sessionId: clientRequest.sessionId,
         sceneId: clientRequest.sceneId,
         status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'Client Request validation failed.',
+        message: 'Ошибка валидации запроса клиента.',
         errors: validationErrors
       })
     });
@@ -60,7 +60,7 @@ export async function handlePostCommands(req, res) {
         sessionId: clientRequest.sessionId,
         sceneId: clientRequest.sceneId,
         status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'Command request could not be stored.',
+        message: 'Не удалось сохранить команду.',
         errors: [error.message]
       })
     });
@@ -84,7 +84,7 @@ export async function handlePostCommands(req, res) {
         sessionId: clientRequest.sessionId,
         sceneId: clientRequest.sceneId,
         status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'Scene Context validation failed.',
+        message: 'Ошибка валидации контекста сцены.',
         errors: sceneContextErrors
       }),
       clientRequest,
@@ -102,7 +102,7 @@ export async function handlePostCommands(req, res) {
         sessionId: clientRequest.sessionId,
         sceneId: clientRequest.sceneId,
         status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'AI Services pipeline validation failed.',
+        message: 'Ошибка валидации конвейера AI-сервисов.',
         errors: aiServices.validation.errors
       }),
       clientRequest,
@@ -128,7 +128,7 @@ export async function handlePostCommands(req, res) {
         sessionId: clientRequest.sessionId,
         sceneId: clientRequest.sceneId,
         status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'Scene Modules pipeline validation failed.',
+        message: 'Ошибка валидации конвейера модулей сцены.',
         sceneResult: sceneModules.sceneResult,
         errors: [
           ...sceneModules.validationErrors,
@@ -150,9 +150,9 @@ export async function handlePostCommands(req, res) {
       sessionId: clientRequest.sessionId,
       sceneId: clientRequest.sceneId,
       responseType: CLIENT_RESPONSE_TYPE.SCENE,
-      message: 'Command request accepted.',
+      message: 'Команда принята.',
       explanation:
-        'Hello world! The API layer received and stored the voice/text command, built a Scene Context, generated a validated Action Plan, and executed it through Scene Modules.',
+        'Запрос принят: команда сохранена, построен контекст сцены, сформирован проверенный план действий и выполнены модули сцены.',
       sceneResult: sceneModules.sceneResult
     }),
     clientRequest,
