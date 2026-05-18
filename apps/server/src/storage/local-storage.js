@@ -2,14 +2,22 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const defaultStorageRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../data'
-);
+const __dirnameStorage = path.dirname(fileURLToPath(import.meta.url));
+/** Корень пакета `apps/server` — относительные пути не зависят от `process.cwd()` (иначе при cwd `/` значение `data` превращалось в `/data`). */
+const serverPackageRoot = path.resolve(__dirnameStorage, '..', '..');
 
-const storageRoot = process.env.SERVER_STORAGE_DIR
-  ? path.resolve(process.env.SERVER_STORAGE_DIR)
-  : defaultStorageRoot;
+function resolveStorageRoot() {
+  const raw = process.env.SERVER_STORAGE_DIR?.trim();
+  if (!raw) {
+    return path.join(serverPackageRoot, 'data');
+  }
+  if (path.isAbsolute(raw)) {
+    return path.normalize(raw);
+  }
+  return path.resolve(serverPackageRoot, raw);
+}
+
+const storageRoot = resolveStorageRoot();
 
 const storagePaths = {
   sessions: path.join(storageRoot, 'sessions'),
