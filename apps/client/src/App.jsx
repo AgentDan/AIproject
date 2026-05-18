@@ -163,7 +163,13 @@ export default function App() {
       }
 
       if (!apiResponse.ok) {
-        throw new Error(payload.message || 'Command request failed.');
+        const details =
+          Array.isArray(payload.errors) && payload.errors.length > 0
+            ? ` — ${payload.errors.join('; ')}`
+            : '';
+        throw new Error(
+          `${payload.message || 'Command request failed.'}${details}`
+        );
       }
 
       setResponse(payload);

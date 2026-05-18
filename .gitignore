@@ -1,7 +1,8 @@
 node_modules/
 dist/
 .expo/
-apps/server/data/
+apps/server/data/*
+!apps/server/data/.gitkeep
 .env
 .env.*
 .DS_Store
