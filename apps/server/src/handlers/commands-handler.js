@@ -11,26 +11,18 @@ import { processRequest } from '../core/orchestrator.js';
 import { buildSceneContext } from '../core/scene-context-builder.js';
 import { runAiServicesPipeline } from '../ai-services/pipeline.js';
 import { executeSceneModulesPipeline } from '../scene-modules/pipeline.js';
-import { readJsonBody, sendJson } from '../http/http-util.js';
+import { sendJson } from '../lib/send-json.js';
 
 function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /** POST /api/commands — полная обработка команды (валидируем, сохраняем, пайплайн). */
-export async function handlePostCommands(request, response) {
-  let body;
-
-  try {
-    body = await readJsonBody(request);
-  } catch (error) {
-    sendJson(response, 400, {
-      status: CLIENT_RESPONSE_STATUS.ERROR,
-      message: error.message,
-      errors: [error.message]
-    });
-    return;
-  }
+export async function handlePostCommands(req, res) {
+  const body =
+    req.body !== undefined && req.body !== null && typeof req.body === 'object'
+      ? req.body
+      : {};
 
   const clientRequest = createClientRequest({
     requestId: body.requestId || createId('request'),
@@ -44,7 +36,7 @@ export async function handlePostCommands(request, response) {
   const validationErrors = validateClientRequest(clientRequest);
 
   if (validationErrors.length > 0) {
-    sendJson(response, 400, {
+    sendJson(res, 400, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
         sessionId: clientRequest.sessionId,
@@ -62,7 +54,7 @@ export async function handlePostCommands(request, response) {
   try {
     storage = await recordCommandRequest(clientRequest);
   } catch (error) {
-    sendJson(response, 500, {
+    sendJson(res, 500, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
         sessionId: clientRequest.sessionId,
@@ -78,7 +70,7 @@ export async function handlePostCommands(request, response) {
   const earlyOutcome = processRequest(clientRequest, storage);
 
   if (earlyOutcome.completed) {
-    sendJson(response, earlyOutcome.statusCode, earlyOutcome.payload);
+    sendJson(res, earlyOutcome.statusCode, earlyOutcome.payload);
     return;
   }
 
@@ -86,7 +78,7 @@ export async function handlePostCommands(request, response) {
     await buildSceneContext(clientRequest);
 
   if (sceneContextErrors.length > 0) {
-    sendJson(response, 500, {
+    sendJson(res, 500, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
         sessionId: clientRequest.sessionId,
@@ -104,7 +96,7 @@ export async function handlePostCommands(request, response) {
   const aiServices = await runAiServicesPipeline(sceneContext);
 
   if (!aiServices.validation.valid) {
-    sendJson(response, 500, {
+    sendJson(res, 500, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
         sessionId: clientRequest.sessionId,
@@ -130,7 +122,7 @@ export async function handlePostCommands(request, response) {
     sceneModules.validationErrors.length > 0 ||
     !sceneModules.sceneResult.validation.valid
   ) {
-    sendJson(response, 500, {
+    sendJson(res, 500, {
       ...createClientResponse({
         requestId: clientRequest.requestId,
         sessionId: clientRequest.sessionId,
@@ -152,7 +144,7 @@ export async function handlePostCommands(request, response) {
     return;
   }
 
-  sendJson(response, 202, {
+  sendJson(res, 202, {
     ...createClientResponse({
       requestId: clientRequest.requestId,
       sessionId: clientRequest.sessionId,
