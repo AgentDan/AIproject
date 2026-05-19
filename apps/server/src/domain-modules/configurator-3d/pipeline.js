@@ -80,7 +80,8 @@ function executeStep(sceneGraph, step) {
   };
 }
 
-export async function executeSceneModulesPipeline(sceneContext, actionPlan) {
+/** Исполнение ActionPlan в домене Configurator-3D (GLTF / scene graph). */
+export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
   const sceneGraph = createSceneGraph(sceneContext);
   const beforeObjects = cloneObjects(sceneGraph.objects);
   const measurements = [];

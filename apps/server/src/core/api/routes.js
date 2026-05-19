@@ -17,7 +17,7 @@ import {
 import { processRequest } from '../orchestrator.js';
 import { buildSceneContext } from '../scene-context-builder.js';
 import { runAiServicesPipeline } from '../../ai-services/pipeline.js';
-import { executeSceneModulesPipeline } from '../../scene-modules/pipeline.js';
+import { executeWorkflow } from '../../workflow-engine/index.js';
 import { buildAcceptedCommandPayload } from '../output-builder.js';
 import {
   isProduction,
@@ -133,14 +133,14 @@ async function handlePostCommands(req, res) {
     return;
   }
 
-  const sceneModules = await executeSceneModulesPipeline(
+  const workflowResult = await executeWorkflow(
     sceneContext,
     aiServices.actionPlan
   );
 
   if (
-    sceneModules.validationErrors.length > 0 ||
-    !sceneModules.sceneResult.validation.valid
+    workflowResult.validationErrors.length > 0 ||
+    !workflowResult.sceneResult.validation.valid
   ) {
     sendJson(res, 500, {
       ...createClientResponse({
@@ -149,17 +149,17 @@ async function handlePostCommands(req, res) {
         sceneId: clientRequest.sceneId,
         status: CLIENT_RESPONSE_STATUS.ERROR,
         message: 'Ошибка валидации конвейера модулей сцены.',
-        sceneResult: sceneModules.sceneResult,
+        sceneResult: workflowResult.sceneResult,
         errors: [
-          ...sceneModules.validationErrors,
-          ...sceneModules.sceneResult.validation.errors
+          ...workflowResult.validationErrors,
+          ...workflowResult.sceneResult.validation.errors
         ]
       }),
       clientRequest,
       storage,
       sceneContext,
       aiServices,
-      sceneModules
+      sceneModules: workflowResult
     });
     return;
   }
@@ -172,7 +172,7 @@ async function handlePostCommands(req, res) {
       storage,
       sceneContext,
       aiServices,
-      sceneModules
+      sceneModules: workflowResult
     })
   );
 }
