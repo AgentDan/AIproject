@@ -3,7 +3,10 @@ dist/
 .expo/
 apps/server/data/*
 !apps/server/data/.gitkeep
+apps/server/src/knowledge-base/data/index/*
+!apps/server/src/knowledge-base/data/index/.gitkeep
 .env
 .env.*
+!.env.example
 .DS_Store
 .claude/

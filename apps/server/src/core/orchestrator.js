@@ -34,7 +34,7 @@ export function processRequest(clientRequest, storage) {
         sceneId: clientRequest.sceneId,
         status: CLIENT_RESPONSE_STATUS.ERROR,
         responseType: CLIENT_RESPONSE_TYPE.SCENE,
-        message: 'Help response validation failed.',
+        message: 'Ошибка валидации ответа help.',
         errors: validationErrors
       }),
       clientRequest,

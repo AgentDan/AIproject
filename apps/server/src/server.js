@@ -1,5 +1,5 @@
 import { createApp } from './app.js';
-import { warnProductionClientDistMissing } from './config/client-dist.js';
+import { warnProductionClientDistMissing } from './core/api/middleware.js';
 import { isProduction, runtimeLabel } from './config/runtime.js';
 import { ensureStorage } from './storage/local-storage.js';
 

@@ -1,3 +1,6 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
 import {
   CLIENT_RESPONSE_STATUS,
   CLIENT_RESPONSE_TYPE,
@@ -6,19 +9,36 @@ import {
   createClientResponse,
   validateClientRequest
 } from '@ai-product-scene-platform/contracts';
-import { recordCommandRequest } from '../storage/local-storage.js';
-import { processRequest } from '../core/orchestrator.js';
-import { buildSceneContext } from '../core/scene-context-builder.js';
-import { runAiServicesPipeline } from '../ai-services/pipeline.js';
-import { executeSceneModulesPipeline } from '../scene-modules/pipeline.js';
-import { sendJson } from '../lib/send-json.js';
+import { sendJson } from '../../lib/send-json.js';
+import {
+  getStorageStatus,
+  recordCommandRequest
+} from '../../storage/local-storage.js';
+import { processRequest } from '../orchestrator.js';
+import { buildSceneContext } from '../scene-context-builder.js';
+import { runAiServicesPipeline } from '../../ai-services/pipeline.js';
+import { executeSceneModulesPipeline } from '../../scene-modules/pipeline.js';
+import { buildAcceptedCommandPayload } from '../output-builder.js';
+import {
+  isProduction,
+  runtimeLabel
+} from '../../config/runtime.js';
+import {
+  wrapAsync,
+  notFoundApiHandler,
+  resolveClientDistPath
+} from './middleware.js';
+
+const __dirnameRoutes = path.dirname(fileURLToPath(import.meta.url));
+const serverRoot = path.join(__dirnameRoutes, '..', '..', '..');
+const gltfDir = path.join(serverRoot, 'gltf');
 
 function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** POST /api/commands — полная обработка команды (валидируем, сохраняем, пайплайн). */
-export async function handlePostCommands(req, res) {
+/** POST /api/commands */
+async function handlePostCommands(req, res) {
   const body =
     req.body !== undefined && req.body !== null && typeof req.body === 'object'
       ? req.body
@@ -61,7 +81,7 @@ export async function handlePostCommands(req, res) {
         sceneId: clientRequest.sceneId,
         status: CLIENT_RESPONSE_STATUS.ERROR,
         message: 'Не удалось сохранить команду.',
-        errors: [error.message]
+        errors: [error instanceof Error ? error.message : String(error)]
       })
     });
     return;
@@ -144,21 +164,103 @@ export async function handlePostCommands(req, res) {
     return;
   }
 
-  sendJson(res, 202, {
-    ...createClientResponse({
-      requestId: clientRequest.requestId,
-      sessionId: clientRequest.sessionId,
-      sceneId: clientRequest.sceneId,
-      responseType: CLIENT_RESPONSE_TYPE.SCENE,
-      message: 'Команда принята.',
-      explanation:
-        'Запрос принят: команда сохранена, построен контекст сцены, сформирован проверенный план действий и выполнены модули сцены.',
-      sceneResult: sceneModules.sceneResult
-    }),
-    clientRequest,
-    storage,
-    sceneContext,
-    aiServices,
-    sceneModules
+  sendJson(
+    res,
+    202,
+    buildAcceptedCommandPayload({
+      clientRequest,
+      storage,
+      sceneContext,
+      aiServices,
+      sceneModules
+    })
+  );
+}
+
+/**
+ * Регистрирует HTTP-маршруты и статику (API Layer).
+ * @param {import('express').Express} app
+ */
+export function mountRoutes(app) {
+  app.use('/gltf', express.static(gltfDir));
+
+  app.get('/health', (req, res) => {
+    sendJson(res, 200, {
+      status: 'ok',
+      service: 'ai-product-scene-platform-server',
+      env: runtimeLabel()
+    });
+  });
+
+  app.get('/api', (req, res) => {
+    sendJson(res, 200, {
+      name: 'AI Product Scene Platform API',
+      version: '0.1.0',
+      endpoints: [
+        'GET /health',
+        'GET /api',
+        'GET /api/storage/status',
+        'POST /api/commands'
+      ]
+    });
+  });
+
+  app.get(
+    '/api/storage/status',
+    wrapAsync(async (req, res) => {
+      sendJson(res, 200, await getStorageStatus());
+    })
+  );
+
+  app.post(
+    '/api/commands',
+    wrapAsync(async (req, res) => {
+      await handlePostCommands(req, res);
+    })
+  );
+
+  app.use('/api', notFoundApiHandler);
+
+  const clientDistPath = resolveClientDistPath();
+
+  if (isProduction) {
+    app.use(
+      express.static(clientDistPath, {
+        setHeaders: (res, filePath) => {
+          if (path.extname(filePath).toLowerCase() === '.html') {
+            res.setHeader('Cache-Control', 'no-cache');
+          }
+        }
+      })
+    );
+
+    const spaIndexPath = path.join(clientDistPath, 'index.html');
+    const spaFallback = (req, res) => {
+      res.sendFile(spaIndexPath, (err) => {
+        if (err) {
+          res
+            .status(503)
+            .type('text/plain')
+            .send(
+              'Client bundle not found. Run "npm run build" or set CLIENT_DIST_PATH to apps/client/dist.'
+            );
+        }
+      });
+    };
+
+    app.get('*', spaFallback);
+    app.head('*', spaFallback);
+  } else {
+    app.get('*', (req, res) =>
+      res.type('text/plain').send('Dev: API only — client runs on Vite.')
+    );
+  }
+
+  app.use((req, res) => {
+    sendJson(res, 404, {
+      status: CLIENT_RESPONSE_STATUS.ERROR,
+      message: 'Route not found.',
+      errors: [`${req.method} ${req.originalUrl} is not supported.`]
+    });
   });
 }

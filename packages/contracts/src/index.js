@@ -35,3 +35,5 @@ export {
   validateHelpResponse,
   validateIntentHelpEntry
 } from './help-response.js';
+
+export { createRetrievedChunk } from './retrieved-chunk.js';

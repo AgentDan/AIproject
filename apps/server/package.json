@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "kb:index": "node src/knowledge-base/indexer.js"
   },
   "dependencies": {
     "@ai-product-scene-platform/ai": "0.1.0",
