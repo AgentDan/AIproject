@@ -1,5 +1,5 @@
 # Дерево проекта `ai-product-scene-platform`
-
+const helloWorld="false";
 Снимок **без** `node_modules/`, `.git/`, `dist/`, `build/`.  
 Подробная архитектура: [docs/architecture.md](docs/architecture.md).
 
