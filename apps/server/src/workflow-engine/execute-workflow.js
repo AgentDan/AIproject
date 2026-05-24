@@ -1,12 +1,11 @@
-import { executeConfigurator3dPipeline } from '../domain-modules/configurator-3d/pipeline.js';
+import { listRegisteredModules, resolveModule } from './module-registry.js';
+import { assertModulePermission } from './permissions.js';
+import { DOMAIN_IDS, bootstrapDomainModules } from './bootstrap.js';
 
-/** Зарегистрированные доменные модули (расширяются без правки core). */
-export const DOMAIN_IDS = Object.freeze({
-  CONFIGURATOR_3D: 'configurator-3d'
-});
+bootstrapDomainModules();
 
 /**
- * Выбор домена по clientState (MVP: только configurator-3d).
+ * Выбор домена: clientState.domain или configurator-3d по умолчанию.
  * @param {object} sceneContext
  */
 function resolveDomainModuleId(sceneContext) {
@@ -18,18 +17,21 @@ function resolveDomainModuleId(sceneContext) {
 }
 
 /**
- * Workflow engine: ActionPlan → зарегистрированный domain module.
+ * Workflow engine: intent → route → execute в domain module (схема v2).
  * @param {object} sceneContext
  * @param {object} actionPlan
  */
 export async function executeWorkflow(sceneContext, actionPlan) {
   const domainId = resolveDomainModuleId(sceneContext);
+  assertModulePermission(sceneContext, domainId);
 
-  if (domainId === DOMAIN_IDS.CONFIGURATOR_3D) {
-    return executeConfigurator3dPipeline(sceneContext, actionPlan);
+  const module = resolveModule(domainId);
+  if (!module) {
+    const available = listRegisteredModules().join(', ') || 'none';
+    throw new Error(
+      `Domain module is not registered: "${domainId}". Registered: ${available}.`
+    );
   }
 
-  throw new Error(
-    `Domain module is not implemented: "${domainId}". Available: ${DOMAIN_IDS.CONFIGURATOR_3D}.`
-  );
+  return module.execute(sceneContext, actionPlan);
 }

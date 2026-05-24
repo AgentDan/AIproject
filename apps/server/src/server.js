@@ -1,7 +1,7 @@
 import { createApp } from './app.js';
 import { warnProductionClientDistMissing } from './core/api/middleware.js';
-import { isProduction, runtimeLabel } from './config/runtime.js';
-import { ensureStorage } from './storage/local-storage.js';
+import { isProduction, runtimeLabel } from './infrastructure/config/runtime.js';
+import { ensureStorage } from './infrastructure/storage/local-storage.js';
 
 export async function startServer() {
   if (isProduction) {

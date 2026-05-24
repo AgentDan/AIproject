@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import cors from 'cors';
 import { CLIENT_RESPONSE_STATUS } from '@ai-product-scene-platform/contracts';
-import { isProduction, corsAllowOrigin } from '../../config/runtime.js';
-import { sendJson } from '../../lib/send-json.js';
+import { corsAllowOrigin } from '../../infrastructure/config/runtime.js';
+import { sendJson } from '../../infrastructure/lib/send-json.js';
 
 const __dirnameMw = path.dirname(fileURLToPath(import.meta.url));
 
@@ -13,22 +14,14 @@ export function wrapAsync(fn) {
   };
 }
 
-export function corsMiddleware(req, res, next) {
-  const allowOrigin = isProduction ? corsAllowOrigin() : '*';
-  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-  );
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization'
-  );
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-}
+export const corsMiddleware = cors((req, callback) => {
+  const configured = corsAllowOrigin();
+  callback(null, {
+    origin: configured === '*' ? '*' : configured,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  });
+});
 
 /** Абсолютный путь к `apps/client/dist` или `CLIENT_DIST_PATH`. */
 export function resolveClientDistPath() {

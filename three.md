@@ -1,17 +1,25 @@
-# Дерево проекта (ориентир по [Universal AI Platform v2](docs/universal_ai_platform_v2.pdf))
+# Дерево `apps/server/src` (Universal AI Platform v2)
 
-Снимок **без** `node_modules/`, `.git/`, `dist/`, `build/`. Подробности слоёв: [docs/architecture.md](docs/architecture.md).
+Схема: [docs/universal_ai_platform_v2.pdf](../docs/universal_ai_platform_v2.pdf)
 
 ```text
-apps/server/src/
-├── core/                    # Platform core (api, orchestrator, builders)
-├── ai-services/            # AI runtime
+src/
+├── core/                      # Platform core
+│   ├── api/                   # API layer (routes, middleware, CORS)
+│   ├── orchestrator.js        # main flow
+│   ├── scene-context-builder.js
+│   └── output-builder.js
+├── ai-services/               # AI runtime
 ├── knowledge-base/
-├── workflow-engine/        # ActionPlan → domain module (executeWorkflow)
+├── workflow-engine/           # registerModule · permissions · executeWorkflow
 ├── domain-modules/
-│   └── configurator-3d/    # плагин 3D (бывший scene-modules)
-├── storage/  config/  services/  lib/
+│   ├── configurator-3d/       # реализован
+│   ├── food-delivery/         # plug-in stub
+│   ├── boats/ furniture/ warehouse/
+├── infrastructure/            # Universal infrastructure
+│   ├── storage/ config/ lib/ services/
+│   └── index.js               # auth · event-bus · jobs · realtime · analytics (stubs)
 ├── app.js  server.js  index.js
 ```
 
-**Поток:** AI runtime → `ActionPlan` → **`workflow-engine`** → **`domain-modules/<plugin>`** → Output builder → клиент.
+Пакеты: `packages/contracts`, `packages/ai`.

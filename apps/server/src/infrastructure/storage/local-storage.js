@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirnameStorage = path.dirname(fileURLToPath(import.meta.url));
 /** Корень пакета `apps/server` — относительные пути не зависят от `process.cwd()` (иначе при cwd `/` значение `data` превращалось в `/data`). */
-const serverPackageRoot = path.resolve(__dirnameStorage, '..', '..');
+const serverPackageRoot = path.resolve(__dirnameStorage, '..', '..', '..');
 
 function resolveStorageRoot() {
   const raw = process.env.SERVER_STORAGE_DIR?.trim();

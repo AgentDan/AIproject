@@ -6,7 +6,7 @@ import {
   getActionHistory,
   getSceneMetadata,
   getSession
-} from '../storage/local-storage.js';
+} from '../infrastructure/storage/local-storage.js';
 
 function buildPreviewObjects(sceneMetadata) {
   const objects = sceneMetadata?.objects;
