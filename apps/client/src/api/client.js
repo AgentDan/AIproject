@@ -8,7 +8,14 @@ export function getApiBaseUrl() {
   if (configuredApi !== '') {
     return configuredApi;
   }
-  return import.meta.env.DEV ? 'http://localhost:3001' : '';
+  if (import.meta.env.DEV) {
+    // Тот же хост, что у Vite (localhost или 192.168.x.x из --host), порт API — 3001
+    if (typeof window !== 'undefined' && window.location.hostname) {
+      return `http://${window.location.hostname}:3001`;
+    }
+    return 'http://localhost:3001';
+  }
+  return '';
 }
 
 /**

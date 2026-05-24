@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { postCommand } from '../api/client.js';
+import { getApiBaseUrl, postCommand } from '../api/client.js';
 import CommandInput from '../widgets/CommandInput.jsx';
 import Preview3D from '../widgets/Preview3D.jsx';
 import ResultViewer from '../widgets/ResultViewer.jsx';
@@ -154,7 +154,7 @@ export default function App() {
         requestError instanceof Error ? requestError.message : String(requestError);
       const looksLikeNetwork = raw === 'Failed to fetch' || /network/i.test(raw);
       const message = looksLikeNetwork
-        ? 'Network error: cannot reach API. Production builds use same-origin /api unless VITE_API_URL is set.'
+        ? `Не удалось связаться с API (${getApiBaseUrl()}). Запустите «npm run dev» и проверьте, что сервер слушает порт 3001. Для другого хоста задайте VITE_API_URL.`
         : raw;
       setResponse(null);
       setError(message);
