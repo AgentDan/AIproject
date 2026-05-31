@@ -12,10 +12,15 @@ import { sendJson } from '../../infrastructure/lib/send-json.js';
 import { getStorageStatus } from '../../infrastructure/storage/local-storage.js';
 import { orchestrateCommand } from '../orchestrator.js';
 import { isProduction, runtimeLabel } from '../../infrastructure/config/runtime.js';
+import { authRouter } from '../../infrastructure/auth/auth-routes.js';
+import { adminRouter } from '../../infrastructure/admin/admin-routes.js';
+import { modelsRouter } from '../../infrastructure/models/models-routes.js';
+import { s3Router } from '../../infrastructure/cloud-r2/s3-routes.js';
 import {
   wrapAsync,
   notFoundApiHandler,
-  resolveClientDistPath
+  resolveClientDistPath,
+  authRateLimit
 } from './middleware.js';
 
 const __dirnameRoutes = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +74,11 @@ async function handlePostCommands(req, res) {
 export function mountRoutes(app) {
   app.use('/gltf', express.static(gltfDir));
 
+  app.use('/api/auth', authRateLimit, authRouter);
+  app.use('/api/admin', adminRouter);
+  app.use('/api/models', modelsRouter);
+  app.use('/api/s3', s3Router);
+
   app.get('/health', (req, res) => {
     sendJson(res, 200, {
       status: 'ok',
@@ -85,7 +95,13 @@ export function mountRoutes(app) {
         'GET /health',
         'GET /api',
         'GET /api/storage/status',
-        'POST /api/commands'
+        'POST /api/commands',
+        'POST /api/auth/register',
+        'POST /api/auth/login',
+        'GET /api/models',
+        'GET /api/admin/users',
+        'POST /api/admin/lab/from-s3',
+        'GET /api/s3/objects'
       ]
     });
   });

@@ -1,5 +1,5 @@
 import express from 'express';
-import { corsMiddleware, globalErrorHandler } from './core/api/middleware.js';
+import { apiRateLimit, corsMiddleware, globalErrorHandler } from './core/api/middleware.js';
 import { mountRoutes } from './core/api/routes.js';
 
 export function createApp() {
@@ -8,6 +8,7 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(corsMiddleware);
   app.use(express.json({ limit: '1mb' }));
+  app.use('/api', apiRateLimit);
   mountRoutes(app);
   app.use(globalErrorHandler);
 

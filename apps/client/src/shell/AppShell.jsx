@@ -117,6 +117,7 @@ export default function App() {
         inputType: nextInputType,
         clientState: {
           source: 'apps/client',
+          domain: 'assistant',
           previewMode: 'fullscreen-mvp'
         }
       });

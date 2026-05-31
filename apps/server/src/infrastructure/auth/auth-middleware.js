@@ -1,0 +1,62 @@
+import { verifyAccessToken } from './jwt.js';
+
+function readBearerToken(req) {
+  const header = req.headers.authorization;
+  if (typeof header !== 'string') {
+    return null;
+  }
+  const match = /^Bearer\s+(\S+)$/i.exec(header.trim());
+  return match?.[1] || null;
+}
+
+/**
+ * @param {{ required?: boolean }} [options]
+ */
+export function authenticate(options = {}) {
+  const { required = false } = options;
+
+  return (req, res, next) => {
+    const token = readBearerToken(req);
+    if (!token) {
+      if (required) {
+        return res.status(401).json({ message: 'Authorization required' });
+      }
+      req.user = null;
+      return next();
+    }
+
+    try {
+      const payload = verifyAccessToken(token);
+      req.user = {
+        id: payload.sub,
+        nickname: payload.nickname,
+        role: payload.role
+      };
+      return next();
+    } catch (err) {
+      if (err?.status === 503) {
+        return res.status(503).json({ message: err.message });
+      }
+      if (required) {
+        return res.status(401).json({ message: 'Invalid or expired token' });
+      }
+      req.user = null;
+      return next();
+    }
+  };
+}
+
+/**
+ * @param {...string} roles
+ */
+export function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authorization required' });
+    }
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    return next();
+  };
+}

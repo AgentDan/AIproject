@@ -2,11 +2,37 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { CLIENT_RESPONSE_STATUS } from '@ai-product-scene-platform/contracts';
 import { corsAllowOrigin } from '../../infrastructure/config/runtime.js';
 import { sendJson } from '../../infrastructure/lib/send-json.js';
 
+export { authenticate, requireRole } from '../../infrastructure/auth/auth-middleware.js';
+
 const __dirnameMw = path.dirname(fileURLToPath(import.meta.url));
+
+function readPositiveInt(raw, fallback) {
+  const n = Number.parseInt(String(raw ?? ''), 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/** Лимит на /api/auth (register, login). */
+export const authRateLimit = rateLimit({
+  windowMs: readPositiveInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+  max: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX, 30),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many auth requests. Try again later.' }
+});
+
+/** Общий лимит на /api/*. */
+export const apiRateLimit = rateLimit({
+  windowMs: readPositiveInt(process.env.API_RATE_LIMIT_WINDOW_MS, 60 * 1000),
+  max: readPositiveInt(process.env.API_RATE_LIMIT_MAX, 200),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests. Try again later.' }
+});
 
 export function wrapAsync(fn) {
   return function asyncRoute(req, res, next) {

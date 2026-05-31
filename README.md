@@ -1,20 +1,33 @@
 # AI Product Scene Platform
 
-Монорепо по схеме **[Universal AI Platform v2](docs/universal_ai_platform_v2.pdf)**.
+Монorepo по схеме **Universal AI Platform v2**.
 
-- Архитектура: [docs/architecture.md](docs/architecture.md)
-- Дерево сервера: [three.md](three.md)
+- Roadmap интеграции: [docs/roadmap-integration-admin-configurator.md](docs/roadmap-integration-admin-configurator.md)
+- API: [docs/api-overview.md](docs/api-overview.md)
+- **Production:** [docs/deploy-production.md](docs/deploy-production.md)
 
-## Запуск
+## Development
 
 ```bash
 npm install
+cp .env.example .env   # при необходимости
 npm run dev
 ```
 
-## CORS
+- Клиент: http://localhost:5173
+- API: http://localhost:3001
 
-Пакет [`cors`](https://www.npmjs.com/package/cors) в `apps/server/src/core/api/middleware.js`; политика — `CORS_ORIGIN` / `corsAllowOrigin()` в `infrastructure/config/runtime.js`.
+## Production (один процесс)
+
+```bash
+npm ci
+npm run build:deploy
+NODE_ENV=production npm start
+```
+
+Сервер отдаёт `apps/client/dist` (SPA) и `/api/*` на одном порту (`PORT`, по умолчанию 3001).
+
+Обязательно в `.env`: `JWT_SECRET`, при auth/admin — `MONGO_URI`, при S3/R2 — `BUCKET_NAME` и ключи. См. [.env.example](.env.example).
 
 ## RAG
 
@@ -22,11 +35,6 @@ npm run dev
 npm run kb:index
 ```
 
-Переменные: [.env.example](.env.example).
+## CORS
 
-## Production
-
-```bash
-npm run build:deploy
-NODE_ENV=production npm start --workspace apps/server
-```
+Пакет `cors` в `apps/server/src/core/api/middleware.js`; в production задайте `CORS_ORIGIN` при отдельном origin клиента.
