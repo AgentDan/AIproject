@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authFetch } from '../../../api/authFetch.js';
+import { authFetch, publicFetch } from '../../../api/authFetch.js';
 
 const API_BASE = '/api/auth';
 
@@ -20,7 +20,7 @@ export function RegisterForm({ showRole = false, onRegistered }) {
     setStatus(null);
     setIsSubmitting(true);
     try {
-      const res = await authFetch(`${API_BASE}/register`, {
+      const res = await (showRole ? authFetch : publicFetch)(`${API_BASE}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

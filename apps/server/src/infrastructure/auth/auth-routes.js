@@ -1,15 +1,14 @@
 import { Router } from 'express';
 import { isProduction } from '../config/runtime.js';
-import { isMongoReady } from '../db/connect-mongo.js';
 import { authenticate } from './auth-middleware.js';
 import { isJwtConfigured } from './jwt.js';
-import { loginUser, registerUser } from './auth-service.js';
+import { isAuthReady, loginUser, registerUser } from './auth-service.js';
 
 export const authRouter = Router();
 
-function mongoUnavailable(_req, res) {
+function authUnavailable(_req, res) {
   return res.status(503).json({
-    message: 'Auth requires MONGO_URI. See .env.example.'
+    message: 'Auth is unavailable. Set MONGO_URI or run in development without it. See .env.example.'
   });
 }
 
@@ -32,8 +31,8 @@ function mapError(err, res, label) {
 }
 
 authRouter.use((req, res, next) => {
-  if (!isMongoReady()) {
-    return mongoUnavailable(req, res);
+  if (!isAuthReady()) {
+    return authUnavailable(req, res);
   }
   next();
 });

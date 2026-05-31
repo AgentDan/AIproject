@@ -8,13 +8,13 @@ export function assertModulePermission(sceneContext, domainId) {
   const auth = sceneContext?.commandContext?.clientState?.auth;
   const role = auth?.role ?? 'anonymous';
 
-  // Destructive domain modules require at least editor role
+  // Destructive domain modules require an authenticated role (not anonymous)
   const restrictedDomains = ['configurator-3d'];
-  const allowedRoles = ['editor', 'administrator'];
+  const allowedRoles = ['user', 'editor', 'administrator'];
 
   if (restrictedDomains.includes(domainId) && !allowedRoles.includes(role)) {
     throw new Error(
-      `Role "${role}" is not allowed to execute domain module "${domainId}". Required: editor or administrator.`
+      `Role "${role}" is not allowed to execute domain module "${domainId}". Sign in with a valid account.`
     );
   }
 }

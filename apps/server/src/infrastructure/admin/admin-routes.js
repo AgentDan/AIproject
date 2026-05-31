@@ -1,20 +1,21 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../auth/auth-middleware.js';
-import { isMongoReady } from '../db/connect-mongo.js';
+import { isAuthReady } from '../auth/auth-service.js';
+import { isDevMemoryAuthEnabled, memoryListUsers } from '../auth/auth-memory-store.js';
 import { User } from '../auth/user-model.js';
 import { closeLab, openFromS3, saveToS3 } from './lab-controller.js';
 
 export const adminRouter = Router();
 
-function mongoUnavailable(_req, res) {
+function adminUsersUnavailable(_req, res) {
   return res.status(503).json({
-    message: 'Admin users API requires MONGO_URI. See .env.example.'
+    message: 'Admin users API is unavailable. Set MONGO_URI or run in development without it.'
   });
 }
 
 adminRouter.use('/users', (req, res, next) => {
-  if (!isMongoReady()) {
-    return mongoUnavailable(req, res);
+  if (!isAuthReady()) {
+    return adminUsersUnavailable(req, res);
   }
   next();
 });
@@ -25,6 +26,9 @@ adminRouter.use(authenticate({ required: true }), requireRole('administrator'));
 
 adminRouter.get('/users', async (_req, res) => {
   try {
+    if (isDevMemoryAuthEnabled()) {
+      return res.json({ users: memoryListUsers() });
+    }
     const users = await User.find({}, { passwordHash: 0 }).sort({ createdAt: -1 }).lean();
     const mapped = (users || []).map((u) => ({
       id: u._id?.toString(),

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { publicFetch } from '../../../api/authFetch.js';
 import { useAuthStore } from '../store/authStore.js';
 
 const API_BASE = '/api/auth';
@@ -21,7 +22,7 @@ export function LoginForm() {
     setStatus(null);
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/login`, {
+      const res = await publicFetch(`${API_BASE}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -56,6 +57,13 @@ export function LoginForm() {
       <h1 className="text-2xl font-bold mb-4">Login</h1>
       <p className="text-slate-400 mb-6 text-sm">
         Sign in with your nickname and password.
+        {import.meta.env.DEV && (
+          <>
+            {' '}
+            Dev without MongoDB: login as admin/admin, or register first (saved to
+            apps/server/data/dev-users.json).
+          </>
+        )}
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

@@ -40,6 +40,31 @@ describe('executeWorkflow', () => {
     );
   });
 
+  it('allows configurator-3d for authenticated user role', async () => {
+    const sceneContext = {
+      sceneId: 'test-scene',
+      commandContext: {
+        clientState: { domain: 'configurator-3d', auth: { role: 'user' } }
+      },
+      objects: [{ objectId: 'configurator-root', type: 'product', movable: true }],
+      hierarchy: [],
+      materials: []
+    };
+
+    const actionPlan = {
+      version: 1,
+      actions: [{
+        type: 'CHANGE_OBJECT_COLOR',
+        targetId: 'configurator-root',
+        params: { color: 'blue' }
+      }],
+      steps: []
+    };
+
+    const result = await executeWorkflow(sceneContext, actionPlan);
+    assert.ok(result.sceneResult);
+  });
+
   it('throws for restricted domain with wrong role', async () => {
     const sceneContext = {
       commandContext: { clientState: { domain: 'configurator-3d', auth: { role: 'anonymous' } } },

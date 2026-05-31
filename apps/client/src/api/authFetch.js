@@ -1,4 +1,13 @@
+import { getApiBaseUrl } from './client.js';
 import { useAuthStore } from '../features/auth/store/authStore.js';
+
+function resolveApiUrl(url) {
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+  const base = getApiBaseUrl();
+  return base ? `${base}${url}` : url;
+}
 
 /**
  * @param {Record<string, string>} [extra]
@@ -14,6 +23,15 @@ export function getAuthHeaders(extra = {}) {
 }
 
 /**
+ * fetch without Authorization (login, public register).
+ * @param {string} url
+ * @param {RequestInit} [options]
+ */
+export function publicFetch(url, options = {}) {
+  return fetch(resolveApiUrl(url), options);
+}
+
+/**
  * fetch with Authorization header when token is stored.
  * @param {string} url
  * @param {RequestInit} [options]
@@ -24,5 +42,5 @@ export function authFetch(url, options = {}) {
       ? /** @type {Record<string, string>} */ (options.headers)
       : {}
   );
-  return fetch(url, { ...options, headers });
+  return fetch(resolveApiUrl(url), { ...options, headers });
 }

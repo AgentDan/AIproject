@@ -123,7 +123,7 @@ export function mountRoutes(app) {
 
   app.post(
     '/api/commands',
-    authenticate({ required: false }),
+    authenticate({ required: false, rejectInvalidToken: true }),
     wrapAsync(async (req, res) => {
       await handlePostCommands(req, res);
     })

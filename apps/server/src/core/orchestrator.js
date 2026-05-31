@@ -130,16 +130,20 @@ export async function orchestrateCommand(clientRequest) {
   try {
     workflowResult = await executeWorkflow(sceneContext, aiServices.actionPlan);
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const isPermissionError = /not allowed/i.test(message);
     return {
-      statusCode: 501,
+      statusCode: isPermissionError ? 403 : 501,
       payload: {
         ...createClientResponse({
           requestId: clientRequest.requestId,
           sessionId: clientRequest.sessionId,
           sceneId: clientRequest.sceneId,
           status: CLIENT_RESPONSE_STATUS.ERROR,
-          message: 'Ошибка workflow engine.',
-          errors: [error instanceof Error ? error.message : String(error)]
+          message: isPermissionError
+            ? 'Недостаточно прав для выполнения команды.'
+            : 'Ошибка workflow engine.',
+          errors: [message]
         }),
         clientRequest,
         storage,

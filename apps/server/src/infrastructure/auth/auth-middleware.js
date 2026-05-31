@@ -10,10 +10,12 @@ function readBearerToken(req) {
 }
 
 /**
- * @param {{ required?: boolean }} [options]
+ * @param {{ required?: boolean, rejectInvalidToken?: boolean }} [options]
+ * rejectInvalidToken: when true, invalid Bearer token → 401 (e.g. /api/commands).
+ * When false, invalid token is ignored and req.user stays null (e.g. /api/auth/login).
  */
 export function authenticate(options = {}) {
-  const { required = false } = options;
+  const { required = false, rejectInvalidToken = required } = options;
 
   return (req, res, next) => {
     const token = readBearerToken(req);
@@ -37,7 +39,7 @@ export function authenticate(options = {}) {
       if (err?.status === 503) {
         return res.status(503).json({ message: err.message });
       }
-      if (required) {
+      if (rejectInvalidToken) {
         return res.status(401).json({ message: 'Invalid or expired token' });
       }
       req.user = null;
