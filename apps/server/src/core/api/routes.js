@@ -16,6 +16,7 @@ import { authRouter } from '../../infrastructure/auth/auth-routes.js';
 import { adminRouter } from '../../infrastructure/admin/admin-routes.js';
 import { modelsRouter } from '../../infrastructure/models/models-routes.js';
 import { s3Router } from '../../infrastructure/cloud-r2/s3-routes.js';
+import { authenticate } from '../../infrastructure/auth/auth-middleware.js';
 import {
   wrapAsync,
   notFoundApiHandler,
@@ -46,6 +47,13 @@ async function handlePostCommands(req, res) {
     command: body.command,
     clientState: body.clientState || {}
   });
+
+  if (req.user) {
+    clientRequest.clientState = {
+      ...clientRequest.clientState,
+      auth: { userId: req.user.id, role: req.user.role }
+    };
+  }
 
   const validationErrors = validateClientRequest(clientRequest);
 
@@ -115,6 +123,7 @@ export function mountRoutes(app) {
 
   app.post(
     '/api/commands',
+    authenticate({ required: false }),
     wrapAsync(async (req, res) => {
       await handlePostCommands(req, res);
     })

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { postCommand } from '../../../api/client.js';
+import { getAuthHeaders } from '../../../api/authFetch.js';
 import { useSpeechCommand } from '../../../hooks/useSpeechCommand.js';
 import { useSceneStore } from '../../../shared/scene/sceneStore.js';
 import { useConfiguratorStore } from '../store/configuratorStore.js';
@@ -44,7 +45,8 @@ export function ConfiguratorCommandBar({ modelKey }) {
       const { apiResponse, payload } = await postCommand({
         command: trimmed,
         inputType: nextInputType,
-        clientState
+        clientState,
+        extraHeaders: getAuthHeaders()
       });
 
       if (!apiResponse.ok) {

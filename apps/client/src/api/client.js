@@ -22,15 +22,16 @@ export function getApiBaseUrl() {
  * @param {{
  *   command: string,
  *   inputType: string,
- *   clientState?: Record<string, unknown>
+ *   clientState?: Record<string, unknown>,
+ *   extraHeaders?: Record<string, string>
  * }} body
  */
-export async function postCommand(body) {
+export async function postCommand({ command, inputType, clientState, extraHeaders = {} }) {
   const apiBaseUrl = getApiBaseUrl();
   const apiResponse = await fetch(`${apiBaseUrl}/api/commands`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    headers: { 'Content-Type': 'application/json', ...extraHeaders },
+    body: JSON.stringify({ command, inputType, clientState })
   });
 
   let payload;
