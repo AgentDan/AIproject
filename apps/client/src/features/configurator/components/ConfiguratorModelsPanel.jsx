@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { publicFetch } from '../../../api/authFetch.js';
 import { useAuthStore } from '../../auth/store/authStore.js';
 import {
   DEFAULT_LIQUID_GLASS_WORKSPACE_TUNE,
@@ -30,13 +31,17 @@ function useIsAdminModeFromLocation() {
 }
 
 function modelListKey(model) {
+  if (model?.source === 'local-gltf') {
+    const localPath = String(model?.localPath || model?.id || '');
+    const name = localPath.includes('/')
+      ? localPath.slice(localPath.lastIndexOf('/') + 1)
+      : localPath.replace(/^local:/i, '');
+    if (name) {
+      return `local:${name}`;
+    }
+  }
   if (model?.s3Key) {
     return String(model.s3Key);
-  }
-  const localPath = String(model?.localPath || '');
-  if (localPath) {
-    const slash = localPath.lastIndexOf('/');
-    return slash >= 0 ? localPath.slice(slash + 1) : localPath;
   }
   return '';
 }
@@ -55,13 +60,13 @@ export function ConfiguratorModelsPanel() {
   const ownerUserId = user?.id;
 
   const load = useCallback(async () => {
+    if (!ownerUserId) return;
     setIsLoading(true);
     setStatus(null);
     try {
-      const query = ownerUserId
-        ? `?ownerUserId=${encodeURIComponent(ownerUserId)}`
-        : '';
-      const res = await fetch(`/api/models${query}`);
+      const res = await publicFetch(
+        `/api/models?ownerUserId=${encodeURIComponent(ownerUserId)}`
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || 'Failed to load models');
       setModels(Array.isArray(data.models) ? data.models : []);
@@ -74,13 +79,13 @@ export function ConfiguratorModelsPanel() {
   }, [ownerUserId]);
 
   useEffect(() => {
-    if (isAdminMode) return;
+    if (!ownerUserId || isAdminMode) return;
     load();
-  }, [isAdminMode, load]);
+  }, [ownerUserId, isAdminMode, load]);
 
   /** First visit without modelKey: set URL to the first model so the scene matches the panel. */
   useEffect(() => {
-    if (isAdminMode) return;
+    if (isAdminMode || !ownerUserId) return;
     if (isLoading || models.length === 0) return;
 
     const keys = models.map((m) => modelListKey(m)).filter(Boolean);
@@ -179,6 +184,13 @@ export function ConfiguratorModelsPanel() {
           <div className="flex w-full min-w-0 flex-col items-center justify-center gap-2">
             {isLoading ? (
               <div className="text-xs text-gray-800 text-center px-0.5">Loading…</div>
+            ) : !ownerUserId ? (
+              <div className="text-xs text-gray-800 text-center px-0.5 leading-snug">
+                <Link to="/login" className="text-blue-800 underline hover:text-blue-950">
+                  Sign in
+                </Link>{' '}
+                to load your 3D models.
+              </div>
             ) : models.length === 0 ? (
               <div className="text-xs text-gray-800 text-center px-0.5 leading-snug">
                 No models found. If you are an admin, assign an owner when uploading in <b>3D Library</b>.

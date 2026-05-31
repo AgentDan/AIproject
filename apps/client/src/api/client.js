@@ -2,6 +2,14 @@
  * HTTP-клиент к Platform API (клиент не знает про AI / Scene Modules — только контракт запроса).
  */
 
+export function resolveApiUrl(path) {
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  const base = getApiBaseUrl();
+  return base ? `${base}${path}` : path;
+}
+
 export function getApiBaseUrl() {
   const rawEnvApi = import.meta.env.VITE_API_URL;
   const configuredApi = typeof rawEnvApi === 'string' ? rawEnvApi.trim() : '';

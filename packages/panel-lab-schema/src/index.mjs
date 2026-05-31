@@ -413,7 +413,33 @@ export function normalizePanelLabToEmbedded(raw) {
   }
 
   finalizeCameraOrbit(merged);
+  ensureMinimumLighting(merged);
   return merged;
+}
+
+function ensureMinimumLighting(panelLab) {
+  const lighting = panelLab?.lighting;
+  if (!lighting) return;
+
+  const hasActiveLight =
+    lighting.ambient?.enabled ||
+    lighting.hemisphere?.enabled ||
+    lighting.directional?.enabled ||
+    (Array.isArray(lighting.directionalLights) &&
+      lighting.directionalLights.some((l) => l && l.enabled !== false)) ||
+    (Array.isArray(lighting.pointLights) &&
+      lighting.pointLights.some((l) => l && l.enabled !== false)) ||
+    (Array.isArray(lighting.spotLights) &&
+      lighting.spotLights.some((l) => l && l.enabled !== false));
+
+  if (!hasActiveLight) {
+    lighting.ambient = {
+      ...lighting.ambient,
+      enabled: true,
+      intensity: Number(lighting.ambient?.intensity) || 0.6,
+      color: lighting.ambient?.color || '#ffffff'
+    };
+  }
 }
 
 /** Persistable glTF payload: full tree, no missing branches. */

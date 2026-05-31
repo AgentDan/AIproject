@@ -1,13 +1,5 @@
-import { getApiBaseUrl } from './client.js';
+import { resolveApiUrl } from './client.js';
 import { useAuthStore } from '../features/auth/store/authStore.js';
-
-function resolveApiUrl(url) {
-  if (/^https?:\/\//i.test(url)) {
-    return url;
-  }
-  const base = getApiBaseUrl();
-  return base ? `${base}${url}` : url;
-}
 
 /**
  * @param {Record<string, string>} [extra]

@@ -1,6 +1,8 @@
+import { resolveApiUrl } from '../../../api/client.js';
+
 /**
  * Resolve a model key from the URL or models API to a fetchable URL.
- * Local dev: bare filenames load from `/gltf/`; S3 keys use the stream API.
+ * S3/R2 keys (from Mongo) → stream API; `local:Box.gltf` → `/gltf/` static.
  *
  * @param {string} modelKey
  * @returns {string | null}
@@ -11,13 +13,12 @@ export function resolveModelUrl(modelKey) {
     return null;
   }
   if (key.startsWith('/')) {
-    return key;
+    return resolveApiUrl(key);
   }
   if (/^local:/i.test(key)) {
-    return `/gltf/${key.slice(6)}`;
+    const name = key.slice(6);
+    return resolveApiUrl(`/gltf/${encodeURIComponent(name)}`);
   }
-  if (/\.(gltf|glb)$/i.test(key) && !key.includes('/')) {
-    return `/gltf/${encodeURIComponent(key)}`;
-  }
-  return `/api/s3/model/${encodeURIComponent(key)}`;
+  // Same as mvp3dcursor: model keys from /api/models are S3 object keys
+  return resolveApiUrl(`/api/s3/model/${encodeURIComponent(key)}`);
 }

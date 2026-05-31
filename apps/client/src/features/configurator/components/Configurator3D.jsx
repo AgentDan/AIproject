@@ -78,8 +78,8 @@ export function Configurator3D() {
           Loading model…
         </div>
       )}
-      <div className="configurator-canvas relative flex-1 min-w-0 min-h-0">
-        <Canvas shadows={canvasShadows} camera={canvasCamera} gl={glProps}>
+      <div className="configurator-canvas relative flex-1 min-w-0 min-h-0 h-full">
+        <Canvas className="!h-full !w-full" shadows={canvasShadows} camera={canvasCamera} gl={glProps}>
           {hasModelKey ? <ConfiguratorScene modelKey={modelKey} requestId={modelRequestId} /> : null}
         </Canvas>
         <ConfiguratorModelsPanel />
