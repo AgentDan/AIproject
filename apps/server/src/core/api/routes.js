@@ -34,6 +34,9 @@ function createId(prefix) {
 
 /** POST /api/commands — только HTTP; flow в orchestrator. */
 async function handlePostCommands(req, res) {
+
+  console.log('req.body', req.body);
+  
   const body =
     req.body !== undefined && req.body !== null && typeof req.body === 'object'
       ? req.body
@@ -86,7 +89,7 @@ export function mountRoutes(app) {
   app.use('/api/admin', adminRouter);
   app.use('/api/models', modelsRouter);
   app.use('/api/s3', s3Router);
-
+ 
   app.get('/health', (req, res) => {
     sendJson(res, 200, {
       status: 'ok',

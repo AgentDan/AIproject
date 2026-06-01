@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getApiBaseUrl, postCommand } from '../api/client.js';
+import { getAuthHeaders } from '../api/authFetch.js';
 import CommandBar from '../widgets/CommandBar.jsx';
 import Preview3D from '../widgets/Preview3D.jsx';
 import ResultViewer from '../widgets/ResultViewer.jsx';
@@ -52,7 +53,8 @@ export default function AppShell() {
           source: 'apps/client',
           domain: 'assistant',
           previewMode: 'fullscreen-mvp'
-        }
+        },
+        extraHeaders: getAuthHeaders()
       });
 
       if (!apiResponse.ok) {

@@ -65,6 +65,25 @@ describe('executeWorkflow', () => {
     assert.ok(result.sceneResult);
   });
 
+  it('routes assistant domain for anonymous users', async () => {
+    const sceneContext = {
+      sceneId: 'preview-scene',
+      commandContext: {
+        clientState: { domain: 'assistant', source: 'apps/client' }
+      },
+      objects: [{ objectId: 'preview-product', type: 'product', movable: true }],
+      hierarchy: [],
+      materials: []
+    };
+
+    const result = await executeWorkflow(sceneContext, {
+      version: 1,
+      actions: [],
+      steps: []
+    });
+    assert.ok(result.sceneResult);
+  });
+
   it('throws for restricted domain with wrong role', async () => {
     const sceneContext = {
       commandContext: { clientState: { domain: 'configurator-3d', auth: { role: 'anonymous' } } },
