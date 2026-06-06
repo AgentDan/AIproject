@@ -3,5 +3,6 @@ export {
   INTENT_REGISTRY,
   INTENT_DETECTION_RULES,
   getIntentEntry,
-  listCommandTypes
+  listCommandTypes,
+  detectMetaIntent
 } from './registry/IntentRegistry.js';

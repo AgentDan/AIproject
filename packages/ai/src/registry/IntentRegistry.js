@@ -240,11 +240,27 @@ export const INTENT_REGISTRY = [
 
 /** @type {IntentDetectionRule[]} — same order as INTENT_REGISTRY, first match wins */
 export const INTENT_DETECTION_RULES = INTENT_REGISTRY.filter(
-  (entry) => entry.detectionPatterns.length > 0
-).map((entry) => ({
-  intent: entry.type,
-  patterns: [...entry.detectionPatterns]
-}));
+  (entry) => (entry.kind ?? 'scene') !== 'meta'
+)
+  .filter((entry) => entry.detectionPatterns.length > 0)
+  .map((entry) => ({
+    intent: entry.type,
+    patterns: [...entry.detectionPatterns]
+  }));
+
+/**
+ * Context-free meta commands (help / list) — matched before scene load.
+ * @param {string} command
+ * @returns {string|null}
+ */
+export function detectMetaIntent(command = '') {
+  for (const entry of INTENT_REGISTRY) {
+    if ((entry.kind ?? 'scene') !== 'meta') continue;
+    if (!entry.detectionPatterns || entry.detectionPatterns.length === 0) continue;
+    if (entry.detectionPatterns.some((p) => p.test(command))) return entry.type;
+  }
+  return null;
+}
 
 export const ACTION_TYPES = Object.freeze(
   Object.fromEntries(

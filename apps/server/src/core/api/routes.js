@@ -11,7 +11,6 @@ import {
 import { sendJson } from '../../infrastructure/lib/send-json.js';
 import { getStorageStatus } from '../../infrastructure/storage/local-storage.js';
 import { orchestrateCommand } from '../orchestrator.js';
-import { buildCommandList } from '../../ai-services/command-catalog.js';
 import { isProduction, runtimeLabel } from '../../infrastructure/config/runtime.js';
 import { authRouter } from '../../infrastructure/auth/auth-routes.js';
 import { adminRouter } from '../../infrastructure/admin/admin-routes.js';
@@ -107,7 +106,6 @@ export function mountRoutes(app) {
         'GET /health',
         'GET /api',
         'GET /api/storage/status',
-        'GET /api/commands/list',
         'POST /api/commands',
         'POST /api/auth/register',
         'POST /api/auth/login',
@@ -125,10 +123,6 @@ export function mountRoutes(app) {
       sendJson(res, 200, await getStorageStatus());
     })
   );
-
-  app.get('/api/commands/list', (req, res) => {
-    sendJson(res, 200, buildCommandList(req.query.mode));
-  });
 
   app.post(
     '/api/commands',

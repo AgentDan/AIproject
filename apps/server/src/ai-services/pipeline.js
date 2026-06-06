@@ -7,11 +7,6 @@ import { generateActionPlan } from './action-plan-generator.js';
 import { validateGeneratedActionPlan } from './action-plan-validator.js';
 import { parseAiResponse } from './ai-response-parser.js';
 import { createFallbackActionPlan } from './ai-fallback-retry-handler.js';
-import { buildCommandList } from './command-catalog.js';
-
-function resolveMode(sceneContext) {
-  return sceneContext.commandContext?.clientState?.mode;
-}
 
 function buildUnknownMeta() {
   return {
@@ -38,12 +33,8 @@ function buildMetaPipelineResult(intent, meta, extras = {}) {
 export async function runAiServicesPipeline(sceneContext) {
   const intent = detectIntent(sceneContext.commandContext.command);
   const entry = getIntentEntry(intent.intent);
-  const mode = resolveMode(sceneContext);
 
-  if (entry?.kind === 'meta' || intent.intent === ACTION_TYPES.UNKNOWN_COMMAND) {
-    if (intent.intent === ACTION_TYPES.LIST_COMMANDS) {
-      return buildMetaPipelineResult(intent, buildCommandList(mode));
-    }
+  if (intent.intent === ACTION_TYPES.UNKNOWN_COMMAND || entry?.kind === 'meta') {
     return buildMetaPipelineResult(intent, buildUnknownMeta());
   }
 

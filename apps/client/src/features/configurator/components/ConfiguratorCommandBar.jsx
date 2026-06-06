@@ -78,13 +78,7 @@ export function ConfiguratorCommandBar({ modelKey }) {
           useViewerSettingsStore.getState().hydrateFromPanelLab(panelLabUpdate);
         }
 
-        const commandList = payload?.data?.commands;
-        if (Array.isArray(commandList)) {
-          setServerNotice(buildServerNoticeFromPayload(payload));
-          return true;
-        }
-
-        if (payload?.data?.kind === 'unknown') {
+        if (payload?.responseType === 'help' || payload?.data?.kind === 'unknown') {
           setServerNotice(buildServerNoticeFromPayload(payload));
           return true;
         }

@@ -3,16 +3,14 @@
  * @param {Record<string, unknown>} payload
  */
 export function buildServerNoticeFromPayload(payload) {
-  const commandList = payload?.data?.commands;
-  if (Array.isArray(commandList)) {
+  if (payload?.responseType === 'help') {
     return {
       type: 'success',
-      responseType: 'command_list',
+      responseType: 'help',
       message:
-        (typeof payload.explanation === 'string' && payload.explanation.trim()) ||
         (typeof payload.message === 'string' && payload.message.trim()) ||
-        'Available commands.',
-      commandList
+        'Supported intents.',
+      helpIntents: payload.help?.intents ?? []
     };
   }
 

@@ -29,16 +29,20 @@ const DEFAULT_API =
 
 const SLATE_950 = '#020617';
 
-function CommandTypeRows({ commands = [] }) {
-  if (!Array.isArray(commands) || commands.length === 0) {
-    return <Text style={styles.helpEmpty}>No commands returned.</Text>;
+function HelpIntentRows({ intents = [] }) {
+  if (!Array.isArray(intents) || intents.length === 0) {
+    return <Text style={styles.helpEmpty}>No intent entries returned.</Text>;
   }
 
-  return commands.map((typeLabel, idx) => (
-    <View key={`${typeLabel}-${idx}`} style={styles.intentChip}>
-      <Text style={styles.intentChipText}>{typeLabel}</Text>
-    </View>
-  ));
+  return intents.map((raw, idx) => {
+    const entry = raw && typeof raw === 'object' ? raw : {};
+    const typeLabel = typeof entry.type === 'string' ? entry.type : `intent-${idx}`;
+    return (
+      <View key={`${typeLabel}-${idx}`} style={styles.intentChip}>
+        <Text style={styles.intentChipText}>{typeLabel}</Text>
+      </View>
+    );
+  });
 }
 
 function PreviewStage({ previewObject }) {
@@ -149,16 +153,13 @@ function ClientApp() {
         throw new Error(payload.message || 'Command request failed.');
       }
       setLatestPayload(payload);
-      const commandList = payload?.data?.commands;
-      if (Array.isArray(commandList)) {
+      if (payload?.responseType === 'help') {
         setServerNotice({
           type: 'success',
-          responseType: 'command_list',
+          responseType: 'help',
           message:
-            (payload.explanation && String(payload.explanation).trim()) ||
-            (payload.message && String(payload.message).trim()) ||
-            'Available commands.',
-          commandList
+            (payload.message && String(payload.message).trim()) || 'Supported intents.',
+          helpIntents: payload.help?.intents ?? []
         });
       } else if (payload?.data?.kind === 'unknown') {
         setServerNotice({
@@ -194,9 +195,7 @@ function ClientApp() {
   }
 
   const roundDisabled = isSubmitting || !command.trim();
-  const isCommandList =
-    serverNotice?.responseType === 'command_list' ||
-    (Array.isArray(serverNotice?.commandList) && serverNotice.commandList.length > 0);
+  const isHelp = serverNotice?.responseType === 'help';
 
   return (
     <View style={styles.root}>
@@ -228,7 +227,7 @@ function ClientApp() {
               style={[
                 styles.noticeBlur,
                 { width: noticeCardW },
-                serverNotice && isCommandList ? { maxHeight: noticeMaxHHelp } : null
+                serverNotice && isHelp ? { maxHeight: noticeMaxHHelp } : null
               ]}
             >
               <View style={styles.noticeRow}>
@@ -241,7 +240,7 @@ function ClientApp() {
                 <View style={styles.noticeRight}>
                   <Text style={styles.noticeKicker}>AI Response</Text>
                   <Text style={styles.noticeBody}>{serverNotice.message}</Text>
-                  {isCommandList ?
+                  {isHelp ?
                     <ScrollView
                       style={styles.helpScrollOuter}
                       contentContainerStyle={styles.helpScrollInner}
@@ -249,22 +248,22 @@ function ClientApp() {
                       nestedScrollEnabled
                       keyboardShouldPersistTaps="handled"
                     >
-                      <CommandTypeRows commands={serverNotice.commandList} />
+                      <HelpIntentRows intents={serverNotice.helpIntents} />
                     </ScrollView>
                   : null}
 
-                  <View style={[styles.chipBar, isCommandList && styles.chipBarHelp]}>
-                    {isCommandList ?
+                  <View style={[styles.chipBar, isHelp && styles.chipBarHelp]}>
+                    {isHelp ?
                       <View style={styles.chip}>
-                        <Text style={styles.chipTxt}>list commands</Text>
+                        <Text style={styles.chipTxt}>help</Text>
                       </View>
                     : null}
-                    {!isCommandList && serverNotice.intent ?
+                    {!isHelp && serverNotice.intent ?
                       <View style={styles.chip}>
                         <Text style={styles.chipTxt}>{serverNotice.intent}</Text>
                       </View>
                     : null}
-                    {!isCommandList && serverNotice.resultStatus ?
+                    {!isHelp && serverNotice.resultStatus ?
                       <View style={styles.chip}>
                         <Text style={styles.chipTxt}>{String(serverNotice.resultStatus)}</Text>
                       </View>

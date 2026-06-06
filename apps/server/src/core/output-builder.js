@@ -40,7 +40,7 @@ export function buildAcceptedCommandPayload({
 }
 
 /**
- * Meta-only ответ (list_commands, unknown_command) — без Workflow Engine.
+ * Meta-only ответ (unknown_command) — без Workflow Engine.
  */
 export function buildMetaCommandPayload({ clientRequest, storage, sceneContext, aiServices }) {
   const meta = aiServices.meta || {};
