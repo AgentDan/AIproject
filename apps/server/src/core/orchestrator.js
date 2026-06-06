@@ -4,55 +4,16 @@
  */
 import {
   CLIENT_RESPONSE_STATUS,
-  CLIENT_RESPONSE_TYPE,
-  createClientResponse,
-  validateClientResponse
+  createClientResponse
 } from '@ai-product-scene-platform/contracts';
-import { HelpService } from '../infrastructure/services/help-service.js';
 import { recordCommandRequest } from '../infrastructure/storage/local-storage.js';
 import { runAiServicesPipeline } from '../ai-services/pipeline.js';
 import { executeWorkflow } from '../workflow-engine/index.js';
 import { buildSceneContext } from './scene-context-builder.js';
 import { buildAcceptedCommandPayload, buildMetaCommandPayload } from './output-builder.js';
 
-export function isHelpListingCommand(command = '') {
-  return command.trim().toLowerCase() === 'helper';
-}
-
 /**
- * Ранний выход (help и т.п.) до Context Builder / AI / Workflow.
- * @returns {{ completed: false } | { completed: true; statusCode: number; payload: object }}
- */
-export function processRequest(clientRequest, storage) { 
-  if (!isHelpListingCommand(clientRequest.command)) {
-    return { completed: false };
-  }
-
-  let payload = HelpService.createHelpListingPayload(clientRequest, storage);
-  const validationErrors = validateClientResponse(payload);
-
-  if (validationErrors.length > 0) {
-    payload = {
-      ...createClientResponse({
-        requestId: clientRequest.requestId,
-        sessionId: clientRequest.sessionId,
-        sceneId: clientRequest.sceneId,
-        status: CLIENT_RESPONSE_STATUS.ERROR,
-        responseType: CLIENT_RESPONSE_TYPE.SCENE,
-        message: 'Ошибка валидации ответа help.',
-        errors: validationErrors
-      }),
-      clientRequest,
-      storage
-    };
-    return { completed: true, statusCode: 500, payload };
-  }
-
-  return { completed: true, statusCode: 202, payload };
-}
-
-/**
- * Полный pipeline: storage → early guards → Context → AI runtime → Workflow → Output.
+ * Полный pipeline: storage → Context → AI runtime → Workflow → Output.
  * @param {Record<string, unknown>} clientRequest
  * @returns {Promise<{ statusCode: number; payload: object }>}
  */
@@ -75,11 +36,6 @@ export async function orchestrateCommand(clientRequest) {
         })
       }
     };
-  }
-
-  const earlyOutcome = processRequest(clientRequest, storage);
-  if (earlyOutcome.completed) {
-    return { statusCode: earlyOutcome.statusCode, payload: earlyOutcome.payload };
   }
 
   const { sceneContext, validationErrors: sceneContextErrors } =

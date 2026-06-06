@@ -1,5 +1,5 @@
 /**
- * Mobile mirror of apps/client MVP: visuals, POST /api/commands, helper intents, dismiss AI Response by tapping outside.
+ * Mobile mirror of apps/client MVP: visuals, POST /api/commands, list commands, dismiss AI Response by tapping outside.
  * No Web SpeechRecognition — same behavior as browsers without speech (text input + FAB).
  */
 import React, { useEffect, useRef, useState } from 'react';
@@ -29,20 +29,16 @@ const DEFAULT_API =
 
 const SLATE_950 = '#020617';
 
-function HelpIntentRows({ intents = [] }) {
-  if (!Array.isArray(intents) || intents.length === 0) {
-    return <Text style={styles.helpEmpty}>No intent entries returned.</Text>;
+function CommandTypeRows({ commands = [] }) {
+  if (!Array.isArray(commands) || commands.length === 0) {
+    return <Text style={styles.helpEmpty}>No commands returned.</Text>;
   }
 
-  return intents.map((raw, idx) => {
-    const entry = raw && typeof raw === 'object' ? raw : {};
-    const typeLabel = typeof entry.type === 'string' ? entry.type : `intent-${idx}`;
-    return (
-      <View key={`${typeLabel}-${idx}`} style={styles.intentChip}>
-        <Text style={styles.intentChipText}>{typeLabel}</Text>
-      </View>
-    );
-  });
+  return commands.map((typeLabel, idx) => (
+    <View key={`${typeLabel}-${idx}`} style={styles.intentChip}>
+      <Text style={styles.intentChipText}>{typeLabel}</Text>
+    </View>
+  ));
 }
 
 function PreviewStage({ previewObject }) {
@@ -153,21 +149,34 @@ function ClientApp() {
         throw new Error(payload.message || 'Command request failed.');
       }
       setLatestPayload(payload);
-      setServerNotice({
-        type: 'success',
-        responseType: payload.responseType,
-        message:
-          payload.responseType === 'help'
-            ? (payload.message && String(payload.message).trim().length > 0 ?
-                String(payload.message).trim()
-              : 'Supported intents.')
-            : payload.explanation || 'The server processed the command.',
-        intent:
-          payload.responseType === 'help' ? undefined : payload.aiServices?.actionPlan?.intent,
-        resultStatus:
-          payload.responseType === 'help' ? payload.responseType : payload.sceneResult?.status,
-        helpIntents: payload.responseType === 'help' ? payload.help?.intents ?? [] : undefined
-      });
+      const commandList = payload?.data?.commands;
+      if (Array.isArray(commandList)) {
+        setServerNotice({
+          type: 'success',
+          responseType: 'command_list',
+          message:
+            (payload.explanation && String(payload.explanation).trim()) ||
+            (payload.message && String(payload.message).trim()) ||
+            'Available commands.',
+          commandList
+        });
+      } else if (payload?.data?.kind === 'unknown') {
+        setServerNotice({
+          type: 'success',
+          message:
+            payload.data?.message ||
+            payload.message ||
+            'Command not recognized.'
+        });
+      } else {
+        setServerNotice({
+          type: 'success',
+          responseType: payload.responseType,
+          message: payload.explanation || 'The server processed the command.',
+          intent: payload.aiServices?.actionPlan?.intent,
+          resultStatus: payload.sceneResult?.status
+        });
+      }
       setCommand('');
     } catch (e) {
       setError(e.message);
@@ -185,6 +194,9 @@ function ClientApp() {
   }
 
   const roundDisabled = isSubmitting || !command.trim();
+  const isCommandList =
+    serverNotice?.responseType === 'command_list' ||
+    (Array.isArray(serverNotice?.commandList) && serverNotice.commandList.length > 0);
 
   return (
     <View style={styles.root}>
@@ -216,7 +228,7 @@ function ClientApp() {
               style={[
                 styles.noticeBlur,
                 { width: noticeCardW },
-                serverNotice.responseType === 'help' ? { maxHeight: noticeMaxHHelp } : null
+                serverNotice && isCommandList ? { maxHeight: noticeMaxHHelp } : null
               ]}
             >
               <View style={styles.noticeRow}>
@@ -229,7 +241,7 @@ function ClientApp() {
                 <View style={styles.noticeRight}>
                   <Text style={styles.noticeKicker}>AI Response</Text>
                   <Text style={styles.noticeBody}>{serverNotice.message}</Text>
-                  {serverNotice.responseType === 'help' ?
+                  {isCommandList ?
                     <ScrollView
                       style={styles.helpScrollOuter}
                       contentContainerStyle={styles.helpScrollInner}
@@ -237,22 +249,22 @@ function ClientApp() {
                       nestedScrollEnabled
                       keyboardShouldPersistTaps="handled"
                     >
-                      <HelpIntentRows intents={serverNotice.helpIntents} />
+                      <CommandTypeRows commands={serverNotice.commandList} />
                     </ScrollView>
                   : null}
 
-                  <View style={[styles.chipBar, serverNotice.responseType === 'help' && styles.chipBarHelp]}>
-                    {serverNotice.responseType === 'help' ?
+                  <View style={[styles.chipBar, isCommandList && styles.chipBarHelp]}>
+                    {isCommandList ?
                       <View style={styles.chip}>
-                        <Text style={styles.chipTxt}>help</Text>
+                        <Text style={styles.chipTxt}>list commands</Text>
                       </View>
                     : null}
-                    {serverNotice.responseType !== 'help' && serverNotice.intent ?
+                    {!isCommandList && serverNotice.intent ?
                       <View style={styles.chip}>
                         <Text style={styles.chipTxt}>{serverNotice.intent}</Text>
                       </View>
                     : null}
-                    {serverNotice.responseType !== 'help' && serverNotice.resultStatus ?
+                    {!isCommandList && serverNotice.resultStatus ?
                       <View style={styles.chip}>
                         <Text style={styles.chipTxt}>{String(serverNotice.resultStatus)}</Text>
                       </View>

@@ -4,6 +4,7 @@ import { getAuthHeaders } from '../api/authFetch.js';
 import CommandBar from '../widgets/CommandBar.jsx';
 import Preview3D from '../widgets/Preview3D.jsx';
 import ResultViewer from '../widgets/ResultViewer.jsx';
+import { buildServerNoticeFromPayload } from '../shared/commandResponseNotice.js';
 
 export default function AppShell() {
   const [response, setResponse] = useState(null);
@@ -66,22 +67,7 @@ export default function AppShell() {
       }
 
       setResponse(payload);
-      setServerNotice({
-        type: 'success',
-        responseType: payload.responseType,
-        message:
-          payload.responseType === 'help'
-            ? payload.message && String(payload.message).trim().length > 0
-              ? String(payload.message).trim()
-              : 'Supported intents.'
-            : payload.explanation || 'The server processed the command.',
-        intent:
-          payload.responseType === 'help' ? undefined : payload.aiServices?.actionPlan?.intent,
-        resultStatus:
-          payload.responseType === 'help' ? payload.responseType : payload.sceneResult?.status,
-        helpIntents:
-          payload.responseType === 'help' ? (payload.help?.intents ?? []) : undefined
-      });
+      setServerNotice(buildServerNoticeFromPayload(payload));
       return true;
     } catch (requestError) {
       const raw =

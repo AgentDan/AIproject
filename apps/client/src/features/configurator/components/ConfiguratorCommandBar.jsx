@@ -7,6 +7,7 @@ import { useAiSceneStore } from '../store/aiSceneStore.js';
 import { useViewerSettingsStore } from '../../../shared/scene/viewerSettingsStore.js';
 import CommandBar from '../../../widgets/CommandBar.jsx';
 import ResultViewer from '../../../widgets/ResultViewer.jsx';
+import { buildServerNoticeFromPayload } from '../../../shared/commandResponseNotice.js';
 
 export function ConfiguratorCommandBar({ modelKey }) {
   const [serverNotice, setServerNotice] = useState(null);
@@ -79,10 +80,12 @@ export function ConfiguratorCommandBar({ modelKey }) {
 
         const commandList = payload?.data?.commands;
         if (Array.isArray(commandList)) {
-          setServerNotice({
-            type: 'success',
-            message: commandList.join(', ')
-          });
+          setServerNotice(buildServerNoticeFromPayload(payload));
+          return true;
+        }
+
+        if (payload?.data?.kind === 'unknown') {
+          setServerNotice(buildServerNoticeFromPayload(payload));
           return true;
         }
 

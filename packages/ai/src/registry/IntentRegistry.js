@@ -224,7 +224,7 @@ export const INTENT_REGISTRY = [
     examples: ['list commands', 'what can i say', 'команды', 'что я могу', 'help'],
     parameters: [],
     detectionPatterns: [
-      /list commands|what can i (say|do)|команды|что я могу|^help$|помощь/i
+      /list commands|what can i (say|do)|команды|что я могу|^help$|^helper$|помощь/i
     ],
     kind: 'meta'
   },
