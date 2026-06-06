@@ -38,3 +38,29 @@ export function buildAcceptedCommandPayload({
     sceneModules
   };
 }
+
+/**
+ * Meta-only ответ (list_commands, unknown_command) — без Workflow Engine.
+ */
+export function buildMetaCommandPayload({ clientRequest, storage, sceneContext, aiServices }) {
+  const meta = aiServices.meta || {};
+  const isUnknown = meta.kind === 'unknown';
+
+  return {
+    ...createClientResponse({
+      requestId: clientRequest.requestId,
+      sessionId: clientRequest.sessionId,
+      sceneId: clientRequest.sceneId,
+      responseType: CLIENT_RESPONSE_TYPE.SCENE,
+      message: isUnknown ? meta.message : 'Available commands.',
+      explanation: isUnknown
+        ? 'Команда не распознана. Используйте "list commands" для списка доступных команд.'
+        : 'Список типов команд для текущего режима (без описаний).'
+    }),
+    data: meta,
+    clientRequest,
+    storage,
+    sceneContext,
+    aiServices
+  };
+}

@@ -3,6 +3,9 @@ import {
   createActionPlan,
   createActionStep
 } from '@ai-product-scene-platform/contracts';
+import { getIntentEntry } from '@ai-product-scene-platform/ai';
+import { cloneDefaultPanelLab } from '@ai-product-scene-platform/panel-lab-schema';
+import { buildKnobStep } from './knob-plan-builder.js';
 
 function createPlanId(requestId) {
   return `plan-${requestId}`;
@@ -10,6 +13,14 @@ function createPlanId(requestId) {
 
 function createStepId(requestId, index) {
   return `step-${requestId}-${index}`;
+}
+
+function resolvePanelLab(sceneContext) {
+  return (
+    sceneContext.panelLab ||
+    sceneContext.metadata?.configurator?.panelLab ||
+    cloneDefaultPanelLab()
+  );
 }
 
 function inferDirection(command) {
@@ -99,12 +110,21 @@ function createStepForIntent({ requestId, intent, command, targetObject }) {
 export function generateActionPlan(sceneContext, intentResult, sceneUnderstanding) {
   const command = sceneContext.commandContext.command || '';
   const requestId = sceneContext.commandContext.requestId;
-  const step = createStepForIntent({
-    requestId,
-    intent: intentResult.intent,
-    command,
-    targetObject: sceneUnderstanding.targetObject
-  });
+  const entry = getIntentEntry(intentResult.intent);
+
+  let step;
+  if (entry?.kind === 'knob') {
+    const panelLab = resolvePanelLab(sceneContext);
+    step = buildKnobStep({ requestId, entry, utterance: command, panelLab });
+    if (!step) return null;
+  } else {
+    step = createStepForIntent({
+      requestId,
+      intent: intentResult.intent,
+      command,
+      targetObject: sceneUnderstanding.targetObject
+    });
+  }
 
   return createActionPlan({
     planId: createPlanId(requestId),

@@ -237,7 +237,7 @@ const REQUIRED_TOP = [
   'controls',
 ];
 
-function isValidPanelLabShape(raw) {
+export function isValidPanelLabShape(raw) {
   if (!isPlainObject(raw)) return false;
   // Treat missing version as legacy (merge with defaults). Only reject explicitly older integers.
   const ver = raw.version;

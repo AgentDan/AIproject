@@ -49,12 +49,13 @@ export const useAiSceneStore = create((set, get) => ({
     });
   },
 
-  buildClientState: ({ modelKey, selection, panelLab, sceneData }) =>
+  buildClientState: ({ modelKey, selection, panelLab, sceneData, mode }) =>
     buildConfiguratorClientState({
       modelKey,
       selection,
       panelLab,
       sceneData,
+      mode,
       localObjectStates: get().localObjectStates
     })
 }));

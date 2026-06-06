@@ -13,7 +13,7 @@ import { recordCommandRequest } from '../infrastructure/storage/local-storage.js
 import { runAiServicesPipeline } from '../ai-services/pipeline.js';
 import { executeWorkflow } from '../workflow-engine/index.js';
 import { buildSceneContext } from './scene-context-builder.js';
-import { buildAcceptedCommandPayload } from './output-builder.js';
+import { buildAcceptedCommandPayload, buildMetaCommandPayload } from './output-builder.js';
 
 export function isHelpListingCommand(command = '') {
   return command.trim().toLowerCase() === 'helper';
@@ -23,7 +23,7 @@ export function isHelpListingCommand(command = '') {
  * Ранний выход (help и т.п.) до Context Builder / AI / Workflow.
  * @returns {{ completed: false } | { completed: true; statusCode: number; payload: object }}
  */
-export function processRequest(clientRequest, storage) {
+export function processRequest(clientRequest, storage) { 
   if (!isHelpListingCommand(clientRequest.command)) {
     return { completed: false };
   }
@@ -104,6 +104,18 @@ export async function orchestrateCommand(clientRequest) {
   }
 
   const aiServices = await runAiServicesPipeline(sceneContext);
+
+  if (aiServices.meta) {
+    return {
+      statusCode: 202,
+      payload: buildMetaCommandPayload({
+        clientRequest,
+        storage,
+        sceneContext,
+        aiServices
+      })
+    };
+  }
 
   if (!aiServices.validation.valid) {
     return {

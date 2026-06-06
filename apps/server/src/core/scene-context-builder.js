@@ -10,6 +10,7 @@ import {
   getSceneMetadata,
   getSession
 } from '../infrastructure/storage/local-storage.js';
+import { normalizePanelLabToEmbedded } from '@ai-product-scene-platform/panel-lab-schema';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const gltfDir = path.resolve(__dir, '..', '..', 'gltf');
@@ -120,6 +121,10 @@ export async function buildSceneContext(clientRequest) {
       clientState
     }
   });
+  if (panelLab) {
+    sceneContext.panelLab = normalizePanelLabToEmbedded(panelLab);
+  }
+
   const validationErrors = validateSceneContext(sceneContext);
 
   return {

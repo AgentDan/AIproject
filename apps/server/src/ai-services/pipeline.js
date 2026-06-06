@@ -1,3 +1,4 @@
+import { ACTION_TYPES, getIntentEntry } from '@ai-product-scene-platform/ai';
 import { buildPrompt } from './prompt-builder.js';
 import { detectIntent } from './intent-detector.js';
 import { retrieve } from './rag-retriever.js';
@@ -6,13 +7,59 @@ import { generateActionPlan } from './action-plan-generator.js';
 import { validateGeneratedActionPlan } from './action-plan-validator.js';
 import { parseAiResponse } from './ai-response-parser.js';
 import { createFallbackActionPlan } from './ai-fallback-retry-handler.js';
+import { buildCommandList } from './command-catalog.js';
+
+function resolveMode(sceneContext) {
+  return sceneContext.commandContext?.clientState?.mode;
+}
+
+function buildUnknownMeta() {
+  return {
+    kind: 'unknown',
+    message: 'Command not recognized. Say "list commands".'
+  };
+}
+
+function buildMetaPipelineResult(intent, meta, extras = {}) {
+  return {
+    prompt: null,
+    intent,
+    retrievedChunks: [],
+    sceneUnderstanding: null,
+    actionPlan: null,
+    validation: { valid: true, errors: [] },
+    usedFallback: false,
+    provider: 'local-rule-based-mvp',
+    meta,
+    ...extras
+  };
+}
 
 export async function runAiServicesPipeline(sceneContext) {
   const intent = detectIntent(sceneContext.commandContext.command);
+  const entry = getIntentEntry(intent.intent);
+  const mode = resolveMode(sceneContext);
+
+  if (entry?.kind === 'meta' || intent.intent === ACTION_TYPES.UNKNOWN_COMMAND) {
+    if (intent.intent === ACTION_TYPES.LIST_COMMANDS) {
+      return buildMetaPipelineResult(intent, buildCommandList(mode));
+    }
+    return buildMetaPipelineResult(intent, buildUnknownMeta());
+  }
+
   const chunks = await retrieve(sceneContext.commandContext.command);
   const prompt = buildPrompt({ sceneContext, intent, chunks });
   const sceneUnderstanding = processSceneUnderstanding(sceneContext, intent);
   const generatedActionPlan = generateActionPlan(sceneContext, intent, sceneUnderstanding);
+
+  if (!generatedActionPlan) {
+    return buildMetaPipelineResult(intent, buildUnknownMeta(), {
+      sceneUnderstanding,
+      prompt,
+      retrievedChunks: chunks
+    });
+  }
+
   const parsedResponse = parseAiResponse(generatedActionPlan);
   let validation = validateGeneratedActionPlan(parsedResponse.actionPlan, sceneUnderstanding);
   let actionPlan = parsedResponse.actionPlan;

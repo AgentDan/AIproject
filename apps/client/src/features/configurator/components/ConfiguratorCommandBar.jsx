@@ -52,7 +52,8 @@ export function ConfiguratorCommandBar({ modelKey }) {
           modelKey,
           selection,
           panelLab,
-          sceneData
+          sceneData,
+          mode: 'panel-lab'
         });
 
         const { apiResponse, payload } = await postCommand({
@@ -71,9 +72,23 @@ export function ConfiguratorCommandBar({ modelKey }) {
           useAiSceneStore.getState().queueServerObjects(objects);
         }
 
+        const panelLabUpdate = payload?.sceneResult?.previewUpdate?.panelLab;
+        if (panelLabUpdate) {
+          useViewerSettingsStore.getState().hydrateFromPanelLab(panelLabUpdate);
+        }
+
+        const commandList = payload?.data?.commands;
+        if (Array.isArray(commandList)) {
+          setServerNotice({
+            type: 'success',
+            message: commandList.join(', ')
+          });
+          return true;
+        }
+
         setServerNotice({
           type: 'success',
-          message: payload.explanation || 'Команда применена к 3D-сцене.'
+          message: payload.explanation || payload.message || 'Команда применена к 3D-сцене.'
         });
         return true;
       } catch (err) {

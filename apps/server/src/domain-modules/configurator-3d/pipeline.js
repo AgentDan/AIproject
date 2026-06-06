@@ -16,6 +16,7 @@ import { measureMeshDistance, showBoundingBoxes } from './mesh-analysis-engine.j
 import { validateSceneState } from './scene-validation-engine.js';
 import { generateSceneDiff } from './scene-diff-generator.js';
 import { createExportReference } from './gltf-glb-exporter.js';
+import { applyPanelLabSteps } from './panel-lab-engine.js';
 
 function cloneObjects(objects) {
   return JSON.parse(JSON.stringify(objects));
@@ -88,7 +89,10 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
   const stepUpdates = [];
   const errors = [];
 
-  for (const step of actionPlan.steps) {
+  const panelLabSteps = actionPlan.steps.filter((s) => s.type === ACTION_TYPES.UPDATE_PANEL_LAB);
+  const sceneSteps = actionPlan.steps.filter((s) => s.type !== ACTION_TYPES.UPDATE_PANEL_LAB);
+
+  for (const step of sceneSteps) {
     const stepResult = executeStep(sceneGraph, step);
     measurements.push(...stepResult.measurements);
 
@@ -101,6 +105,21 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
     }
 
     errors.push(...stepResult.errors);
+  }
+
+  let panelLabResult = null;
+  if (panelLabSteps.length) {
+    panelLabResult = applyPanelLabSteps(sceneContext, panelLabSteps);
+    for (const step of panelLabSteps) {
+      stepUpdates.push({
+        stepId: step.stepId,
+        type: step.type,
+        update: panelLabResult.previewUpdate
+      });
+    }
+    if (panelLabResult.panelLab) {
+      sceneContext.panelLab = panelLabResult.panelLab;
+    }
   }
 
   const validation = validateSceneState(sceneGraph);
@@ -116,9 +135,12 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
     updatedSceneUri,
     previewUpdate: {
       objects: sceneGraph.objects,
-      stepUpdates
+      stepUpdates,
+      ...(panelLabResult ? { panelLab: panelLabResult.panelLab } : {})
     },
-    sceneDiff,
+    sceneDiff: panelLabResult
+      ? [...sceneDiff, ...panelLabResult.diff.map((d) => ({ ...d, kind: 'panelLab' }))]
+      : sceneDiff,
     measurements,
     validation: {
       valid: validation.valid && errors.length === 0,

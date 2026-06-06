@@ -118,7 +118,8 @@ export function buildConfiguratorClientState({
   selection,
   panelLab,
   sceneData,
-  localObjectStates
+  localObjectStates,
+  mode
 }) {
   const sel = /** @type {Record<number, number>} */ (selection || {});
 
@@ -127,6 +128,7 @@ export function buildConfiguratorClientState({
     modelKey: modelKey || null,
     selection: sel,
     panelLab: panelLab || null,
+    mode: mode || 'panel-lab',
     source: 'apps/client/configurator',
     objects: buildConfiguratorObjectsFromSceneData(sceneData, sel, localObjectStates || {})
   };
