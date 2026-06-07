@@ -30,8 +30,13 @@ function buildMetaPipelineResult(intent, meta, extras = {}) {
   };
 }
 
+function resolveCommandScope(sceneContext) {
+  return sceneContext.commandContext?.clientState?.mode;
+}
+
 export async function runAiServicesPipeline(sceneContext) {
-  const intent = detectIntent(sceneContext.commandContext.command);
+  const scope = resolveCommandScope(sceneContext);
+  const intent = detectIntent(sceneContext.commandContext.command, scope);
   const entry = getIntentEntry(intent.intent);
 
   if (intent.intent === ACTION_TYPES.UNKNOWN_COMMAND || entry?.kind === 'meta') {

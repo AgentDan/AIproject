@@ -35,8 +35,6 @@ function createId(prefix) {
 /** POST /api/commands — только HTTP; flow в orchestrator. */
 async function handlePostCommands(req, res) {
 
-  console.log('req.body', req.body);
-  
   const body =
     req.body !== undefined && req.body !== null && typeof req.body === 'object'
       ? req.body
@@ -51,12 +49,15 @@ async function handlePostCommands(req, res) {
     clientState: body.clientState || {}
   });
 
+
   if (req.user) {
     clientRequest.clientState = {
       ...clientRequest.clientState,
       auth: { userId: req.user.id, role: req.user.role }
     };
   }
+
+  console.log('clientRequest My', clientRequest);
 
   const validationErrors = validateClientRequest(clientRequest);
 

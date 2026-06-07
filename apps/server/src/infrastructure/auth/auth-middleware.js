@@ -15,6 +15,8 @@ function readBearerToken(req) {
  * When false, invalid token is ignored and req.user stays null (e.g. /api/auth/login).
  */
 export function authenticate(options = {}) {
+  // Эта строка извлекает опции "required" (обязательна ли авторизация) и "rejectInvalidToken" (отклонять ли запрос при недействительном токене)
+  // По умолчанию required = false; rejectInvalidToken принимает значение required если не задан
   const { required = false, rejectInvalidToken = required } = options;
 
   return (req, res, next) => {

@@ -3,7 +3,7 @@ import {
   createActionPlan,
   createActionStep
 } from '@ai-product-scene-platform/contracts';
-import { getIntentEntry } from '@ai-product-scene-platform/ai';
+import { getIntentEntry, isIntentAllowedForScope } from '@ai-product-scene-platform/ai';
 import { cloneDefaultPanelLab } from '@ai-product-scene-platform/panel-lab-schema';
 import { buildKnobStep } from './knob-plan-builder.js';
 
@@ -111,6 +111,11 @@ export function generateActionPlan(sceneContext, intentResult, sceneUnderstandin
   const command = sceneContext.commandContext.command || '';
   const requestId = sceneContext.commandContext.requestId;
   const entry = getIntentEntry(intentResult.intent);
+  const scope = sceneContext.commandContext?.clientState?.mode;
+
+  if (entry && !isIntentAllowedForScope(entry, scope)) {
+    return null;
+  }
 
   let step;
   if (entry?.kind === 'knob') {

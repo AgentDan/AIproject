@@ -53,6 +53,7 @@ export default function AppShell() {
         clientState: {
           source: 'apps/client',
           domain: 'assistant',
+          mode: 'assistant',
           previewMode: 'fullscreen-mvp'
         },
         extraHeaders: getAuthHeaders()

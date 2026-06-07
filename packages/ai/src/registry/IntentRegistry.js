@@ -74,7 +74,7 @@ export const INTENT_REGISTRY = [
       { name: 'delta', description: 'Optional axis offsets for the MVP transform.' }
     ],
     detectionPatterns: [/\bmove\b/i, /\bshift\b/i, /\btranslate\b/i],
-    scopes: ['configurator', 'panel-lab'],
+    scopes: ['configurator', 'panel-lab', 'assistant'],
     kind: 'scene'
   },
   {
@@ -86,7 +86,7 @@ export const INTENT_REGISTRY = [
       { name: 'color', description: 'CSS-style color literal or palette name.' }
     ],
     detectionPatterns: [/\bcolor\b/i, /\bcolour\b/i, /\bpaint\b/i],
-    scopes: ['configurator', 'panel-lab'],
+    scopes: ['configurator', 'panel-lab', 'assistant'],
     kind: 'scene'
   },
   {
@@ -95,7 +95,7 @@ export const INTENT_REGISTRY = [
     examples: ['Show bounding boxes', 'Outline the bounds'],
     parameters: [{ name: 'targetObjectIds', description: 'Optional subset of objects.' }],
     detectionPatterns: [/bounding box/i, /bounds/i, /\bbox\b/i],
-    scopes: ['configurator', 'panel-lab'],
+    scopes: ['configurator', 'panel-lab', 'assistant'],
     kind: 'scene'
   },
   {
@@ -107,7 +107,7 @@ export const INTENT_REGISTRY = [
       { name: 'toObjectId', description: 'Second mesh / object.' }
     ],
     detectionPatterns: [/\bmeasure\b/i, /\bdistance\b/i],
-    scopes: ['configurator', 'panel-lab'],
+    scopes: ['configurator', 'panel-lab', 'assistant'],
     kind: 'scene'
   },
   {
@@ -116,7 +116,7 @@ export const INTENT_REGISTRY = [
     examples: ['Download the scene', 'Export glTF snapshot'],
     parameters: [{ name: 'format', description: 'Optional export hint (e.g. gltf, glb).' }],
     detectionPatterns: [/\bdownload\b/i, /\bexport\b/i],
-    scopes: ['configurator', 'panel-lab'],
+    scopes: ['configurator', 'panel-lab', 'assistant'],
     kind: 'scene'
   },
   {
@@ -277,12 +277,32 @@ export function getIntentEntry(type) {
 }
 
 /**
+ * @param {IntentRegistryEntry | undefined} entry
+ * @param {CommandScope | string | null | undefined} scope
+ * @returns {boolean}
+ */
+export function isIntentAllowedForScope(entry, scope) {
+  if (!entry) return false;
+  if (!scope) return true;
+  if (!entry.scopes || entry.scopes.length === 0) return true;
+  return entry.scopes.includes(/** @type {CommandScope} */ (scope));
+}
+
+/**
+ * @param {CommandScope | string | null | undefined} scope
+ * @returns {IntentRegistryEntry[]}
+ */
+export function listIntentsForScope(scope) {
+  return INTENT_REGISTRY.filter((e) => (e.kind ?? 'scene') !== 'meta')
+    .filter((e) => e.type !== 'update_panel_lab')
+    .filter((e) => e.detectionPatterns.length > 0)
+    .filter((e) => isIntentAllowedForScope(e, scope));
+}
+
+/**
  * @param {CommandScope} [scope]
  * @returns {string[]}
  */
 export function listCommandTypes(scope) {
-  return INTENT_REGISTRY.filter((e) => (e.kind ?? 'scene') !== 'meta')
-    .filter((e) => e.type !== 'update_panel_lab')
-    .filter((e) => !scope || !e.scopes || e.scopes.includes(scope))
-    .map((e) => e.type);
+  return listIntentsForScope(scope).map((e) => e.type);
 }

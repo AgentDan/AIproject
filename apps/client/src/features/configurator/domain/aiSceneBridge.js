@@ -111,7 +111,18 @@ export function buildConfiguratorObjectsFromSceneData(sceneData, selection, loca
 }
 
 /**
- * @param {{ modelKey?: string, selection?: object, panelLab?: object, sceneData?: object, localObjectStates?: Record<string, object> }} args
+ * panel-lab when URL has ?labKey= (admin Lab editor); otherwise configurator.
+ * @param {string} [search]
+ * @returns {'panel-lab' | 'configurator'}
+ */
+export function resolveConfiguratorCommandMode(search = '') {
+  const params = new URLSearchParams(search);
+  const labKey = params.get('labKey');
+  return labKey && labKey.trim() ? 'panel-lab' : 'configurator';
+}
+
+/**
+ * @param {{ modelKey?: string, selection?: object, panelLab?: object, sceneData?: object, localObjectStates?: Record<string, object>, mode?: string }} args
  */
 export function buildConfiguratorClientState({
   modelKey,
@@ -128,7 +139,7 @@ export function buildConfiguratorClientState({
     modelKey: modelKey || null,
     selection: sel,
     panelLab: panelLab || null,
-    mode: mode || 'panel-lab',
+    mode: mode || 'configurator',
     source: 'apps/client/configurator',
     objects: buildConfiguratorObjectsFromSceneData(sceneData, sel, localObjectStates || {})
   };

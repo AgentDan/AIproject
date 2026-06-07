@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { postCommand } from '../../../api/client.js';
 import { getAuthHeaders } from '../../../api/authFetch.js';
 import { useSceneStore } from '../../../shared/scene/sceneStore.js';
@@ -8,8 +9,10 @@ import { useViewerSettingsStore } from '../../../shared/scene/viewerSettingsStor
 import CommandBar from '../../../widgets/CommandBar.jsx';
 import ResultViewer from '../../../widgets/ResultViewer.jsx';
 import { buildServerNoticeFromPayload } from '../../../shared/commandResponseNotice.js';
+import { resolveConfiguratorCommandMode } from '../domain/aiSceneBridge.js';
 
 export function ConfiguratorCommandBar({ modelKey }) {
+  const location = useLocation();
   const [serverNotice, setServerNotice] = useState(null);
   const serverNoticeRef = useRef(/** @type {HTMLDivElement | null} */ (null));
 
@@ -54,7 +57,7 @@ export function ConfiguratorCommandBar({ modelKey }) {
           selection,
           panelLab,
           sceneData,
-          mode: 'panel-lab'
+          mode: resolveConfiguratorCommandMode(location.search)
         });
 
         const { apiResponse, payload } = await postCommand({
@@ -98,7 +101,7 @@ export function ConfiguratorCommandBar({ modelKey }) {
         return false;
       }
     },
-    [modelKey, panelLab, sceneData, selection]
+    [modelKey, panelLab, sceneData, selection, location.search]
   );
 
   if (!modelKey) {
