@@ -9,7 +9,10 @@ import { useViewerSettingsStore } from '../../../shared/scene/viewerSettingsStor
 import CommandBar from '../../../widgets/CommandBar.jsx';
 import ResultViewer from '../../../widgets/ResultViewer.jsx';
 import { buildServerNoticeFromPayload } from '../../../shared/commandResponseNotice.js';
-import { resolveConfiguratorCommandMode } from '../domain/aiSceneBridge.js';
+import {
+  resolveConfiguratorCommandMode,
+  shouldSyncServerObjects
+} from '../domain/aiSceneBridge.js';
 
 export function ConfiguratorCommandBar({ modelKey }) {
   const location = useLocation();
@@ -71,12 +74,12 @@ export function ConfiguratorCommandBar({ modelKey }) {
           throw new Error(payload.message || 'Command failed');
         }
 
-        const objects = payload?.sceneResult?.previewUpdate?.objects;
-        if (Array.isArray(objects) && objects.length > 0) {
-          useAiSceneStore.getState().queueServerObjects(objects);
+        const previewUpdate = payload?.sceneResult?.previewUpdate;
+        if (shouldSyncServerObjects(previewUpdate)) {
+          useAiSceneStore.getState().queueServerObjects(previewUpdate.objects);
         }
 
-        const panelLabUpdate = payload?.sceneResult?.previewUpdate?.panelLab;
+        const panelLabUpdate = previewUpdate?.panelLab;
         if (panelLabUpdate) {
           useViewerSettingsStore.getState().hydrateFromPanelLab(panelLabUpdate);
         }

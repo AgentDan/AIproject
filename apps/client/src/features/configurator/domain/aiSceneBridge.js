@@ -1,5 +1,19 @@
 export const CONFIGURATOR_ROOT_OBJECT_ID = 'configurator-root';
 
+const OBJECT_SYNC_STEP_TYPES = new Set(['move_object', 'change_object_color']);
+
+/** Only scene steps that mutate object transform/material should repaint meshes on the client. */
+export function shouldSyncServerObjects(previewUpdate) {
+  if (!Array.isArray(previewUpdate?.objects) || previewUpdate.objects.length === 0) {
+    return false;
+  }
+  const steps = previewUpdate.stepUpdates;
+  if (!Array.isArray(steps)) {
+    return false;
+  }
+  return steps.some((step) => OBJECT_SYNC_STEP_TYPES.has(step?.type));
+}
+
 /** @type {Record<string, string>} */
 const NAMED_COLORS = {
   red: '#ef4444',

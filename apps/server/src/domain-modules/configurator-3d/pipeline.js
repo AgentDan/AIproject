@@ -125,6 +125,11 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
   const validation = validateSceneState(sceneGraph);
   const sceneDiff = generateSceneDiff(beforeObjects, sceneGraph.objects);
   const updatedSceneUri = createExportReference(sceneContext.sceneId, actionPlan.requestId);
+  const objectMutatingSteps = new Set([
+    ACTION_TYPES.MOVE_OBJECT,
+    ACTION_TYPES.CHANGE_OBJECT_COLOR
+  ]);
+  const includesObjectPreview = sceneSteps.some((step) => objectMutatingSteps.has(step.type));
   const sceneResult = createSceneResult({
     resultId: `result-${actionPlan.requestId}`,
     requestId: actionPlan.requestId,
@@ -134,8 +139,8 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
       : SCENE_RESULT_STATUS.SUCCESS,
     updatedSceneUri,
     previewUpdate: {
-      objects: sceneGraph.objects,
       stepUpdates,
+      ...(includesObjectPreview ? { objects: sceneGraph.objects } : {}),
       ...(panelLabResult ? { panelLab: panelLabResult.panelLab } : {})
     },
     sceneDiff: panelLabResult
