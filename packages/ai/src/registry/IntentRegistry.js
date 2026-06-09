@@ -4,58 +4,80 @@
  */
 
 /**
+ * Режим клиента (`clientState.mode`): определяет, какие intent'ы доступны и что показывает help.
  * @typedef {'panel-lab' | 'configurator' | 'assistant'} CommandScope
+ * @description
+ * - `configurator` — обычный 3D-конфигуратор (только scene-команды).
+ * - `panel-lab` — редактор Panel Lab (`?labKey=`); scene + knob-команды.
+ * - `assistant` — страница AI Assistant; те же scene-команды, что и в configurator.
  */
 
 /**
+ * Категория команды: влияет на маршрутизацию в orchestrator / AI pipeline.
  * @typedef {'scene' | 'knob' | 'creative' | 'meta'} CommandKind
+ * @description
+ * - `scene` — изменение объектов сцены или внутренний шаг workflow (`update_panel_lab`).
+ * - `knob` — голосовые «ручки» Panel Lab → sparse patch в `panelLab`.
+ * - `creative` — зарезервировано под генеративные команды (пока не используется).
+ * - `meta` — служебные команды (help, unknown); без Action Plan и workflow.
  */
 
 /**
+ * Операция knob над значением в `panelLab`.
  * @typedef {'set' | 'adjust' | 'toggle'} KnobOp
+ * @description
+ * - `toggle` — инвертировать boolean по `paths[0]`.
+ * - `set` — задать значение (из utterance, `setValue` или `valueKind`).
+ * - `adjust` — умножить число на `factor` из подходящего `variants`.
  */
 
 /**
+ * Параметр intent'а для help-ответа (`list_commands`).
  * @typedef {Object} IntentHelpParameter
- * @property {string} name
- * @property {string} [description]
+ * @property {string} name — имя параметра в Action Plan / API.
+ * @property {string} [description] — пояснение для пользователя в help.
  */
 
 /**
+ * Вариант adjust-knob: какой множитель применить при совпадении фразы.
  * @typedef {Object} KnobVariant
- * @property {RegExp} match
- * @property {number} factor
+ * @property {RegExp} match — regex по utterance; первый совпавший вариант побеждает.
+ * @property {number} factor — множитель для текущего числового значения (`op: 'adjust'`).
  */
 
 /**
+ * Метаданные knob-intent'а: как собрать sparse patch для `UPDATE_PANEL_LAB`.
  * @typedef {Object} KnobMeta
- * @property {string[]} paths
- * @property {KnobOp} op
- * @property {[number, number]} [clamp]
- * @property {'number' | 'color' | 'enum'} [valueKind]
- * @property {string[]} [enumValues]
- * @property {unknown} [setValue]
- * @property {KnobVariant[]} [variants]
+ * @property {string[]} paths — dot-path в `panelLab` (несколько путей → одно значение в каждый).
+ * @property {KnobOp} op — способ вычисления нового значения.
+ * @property {[number, number]} [clamp] — min/max для числовых `set` и `adjust`.
+ * @property {'number' | 'color' | 'enum'} [valueKind] — как извлечь значение из utterance при `op: 'set'`.
+ * @property {string[]} [enumValues] — допустимые строки при `valueKind: 'enum'`.
+ * @property {unknown} [setValue] — фиксированное значение при `op: 'set'` (без парсинга utterance).
+ * @property {KnobVariant[]} [variants] — список множителей при `op: 'adjust'`.
  */
 
 /**
+ * Одна запись реестра intent'ов.
  * @typedef {Object} IntentRegistryEntry
- * @property {string} type
- * @property {string} description
- * @property {string[]} examples
- * @property {IntentHelpParameter[]} parameters
- * @property {RegExp[]} detectionPatterns
- * @property {CommandScope[]} [scopes]
- * @property {CommandKind} [kind]
- * @property {KnobMeta} [knob]
+ * @property {string} type — уникальный snake_case id; становится значением в `ACTION_TYPES`.
+ * @property {string} description — краткое описание для help и документации.
+ * @property {string[]} examples — примеры фраз пользователя (показываются в help).
+ * @property {IntentHelpParameter[]} parameters — ожидаемые параметры Action Plan.
+ * @property {RegExp[]} detectionPatterns — regex по utterance; порядок в `INTENT_REGISTRY` важен (first match wins).
+ * @property {CommandScope[]} [scopes] — режимы, где intent разрешён; без поля — доступен везде.
+ * @property {CommandKind} [kind] — категория; по умолчанию `'scene'`.
+ * @property {KnobMeta} [knob] — обязателен при `kind: 'knob'`; используется `knobToPatch()`.
  */
 
 /**
+ * Упрощённое правило для MVP intent detector (без meta и без пустых patterns).
  * @typedef {Object} IntentDetectionRule
- * @property {string} intent
- * @property {RegExp[]} patterns
+ * @property {string} intent — значение `type` из `IntentRegistryEntry`.
+ * @property {RegExp[]} patterns — копия `detectionPatterns` для быстрого перебора.
  */
 
+/** `move_object` → `MOVE_OBJECT` для ключей `ACTION_TYPES`. */
 function screamingSnakeFromType(snakeCase) {
   return snakeCase
     .split('_')
@@ -63,7 +85,19 @@ function screamingSnakeFromType(snakeCase) {
     .join('_');
 }
 
-/** @type {IntentRegistryEntry[]} */
+/**
+ * Полный каталог intent'ов. Порядок массива = приоритет детектора (раньше = выше).
+ *
+ * Общие поля каждой записи:
+ * - `type` — id команды
+ * - `description` / `examples` / `parameters` — help (`list_commands`)
+ * - `detectionPatterns` — распознавание utterance
+ * - `scopes` — фильтр по `clientState.mode`
+ * - `kind` — scene | knob | meta
+ * - `knob` — только для knob: patch panelLab
+ *
+ * @type {IntentRegistryEntry[]}
+ */
 export const INTENT_REGISTRY = [
   {
     type: 'move_object',
@@ -238,7 +272,11 @@ export const INTENT_REGISTRY = [
   }
 ];
 
-/** @type {IntentDetectionRule[]} — same order as INTENT_REGISTRY, first match wins */
+/**
+ * Правила детектора: meta исключены, пустые `detectionPatterns` пропущены.
+ * Порядок как в `INTENT_REGISTRY` — первое совпадение побеждает.
+ * @type {IntentDetectionRule[]}
+ */
 export const INTENT_DETECTION_RULES = INTENT_REGISTRY.filter(
   (entry) => (entry.kind ?? 'scene') !== 'meta'
 )
@@ -249,9 +287,10 @@ export const INTENT_DETECTION_RULES = INTENT_REGISTRY.filter(
   }));
 
 /**
- * Context-free meta commands (help / list) — matched before scene load.
- * @param {string} command
- * @returns {string|null}
+ * Meta-команды без контекста сцены (сейчас только `list_commands`).
+ * Вызывается в orchestrator до `buildSceneContext`.
+ * @param {string} command — utterance пользователя.
+ * @returns {string|null} — `type` meta-intent'а или `null`, если не meta.
  */
 export function detectMetaIntent(command = '') {
   for (const entry of INTENT_REGISTRY) {
@@ -262,6 +301,11 @@ export function detectMetaIntent(command = '') {
   return null;
 }
 
+/**
+ * Константы типов шагов Action Plan: ключ SCREAMING_SNAKE → значение `type` из реестра.
+ * Автогенерируется из `INTENT_REGISTRY`; единый источник правды для `@ai-product-scene-platform/contracts`.
+ * @type {Readonly<Record<string, string>>}
+ */
 export const ACTION_TYPES = Object.freeze(
   Object.fromEntries(
     INTENT_REGISTRY.map((entry) => [screamingSnakeFromType(entry.type), entry.type])
@@ -269,7 +313,7 @@ export const ACTION_TYPES = Object.freeze(
 );
 
 /**
- * @param {string} type
+ * @param {string} type — `IntentRegistryEntry.type` (snake_case).
  * @returns {IntentRegistryEntry | undefined}
  */
 export function getIntentEntry(type) {
@@ -277,8 +321,9 @@ export function getIntentEntry(type) {
 }
 
 /**
- * @param {IntentRegistryEntry | undefined} entry
- * @param {CommandScope | string | null | undefined} scope
+ * Проверяет, разрешён ли intent в текущем `clientState.mode`.
+ * @param {IntentRegistryEntry | undefined} entry — запись реестра.
+ * @param {CommandScope | string | null | undefined} scope — `configurator` | `panel-lab` | `assistant`; `null` → всё разрешено.
  * @returns {boolean}
  */
 export function isIntentAllowedForScope(entry, scope) {
@@ -289,7 +334,8 @@ export function isIntentAllowedForScope(entry, scope) {
 }
 
 /**
- * @param {CommandScope | string | null | undefined} scope
+ * Список intent'ов для help и scope-guard (без meta и `update_panel_lab`).
+ * @param {CommandScope | string | null | undefined} scope — режим клиента; без scope — все non-meta.
  * @returns {IntentRegistryEntry[]}
  */
 export function listIntentsForScope(scope) {
@@ -300,7 +346,8 @@ export function listIntentsForScope(scope) {
 }
 
 /**
- * @param {CommandScope} [scope]
+ * Только `type` строки для кратких списков команд.
+ * @param {CommandScope} [scope] — режим клиента.
  * @returns {string[]}
  */
 export function listCommandTypes(scope) {

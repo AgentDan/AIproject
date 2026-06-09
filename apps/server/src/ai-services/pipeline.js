@@ -44,6 +44,9 @@ export async function runAiServicesPipeline(sceneContext) {
   }
 
   const chunks = await retrieve(sceneContext.commandContext.command);
+
+  // console.log('chunks', chunks);
+
   const prompt = buildPrompt({ sceneContext, intent, chunks });
   const sceneUnderstanding = processSceneUnderstanding(sceneContext, intent);
   const generatedActionPlan = generateActionPlan(sceneContext, intent, sceneUnderstanding);
