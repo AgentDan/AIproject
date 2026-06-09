@@ -23,6 +23,17 @@ function cloneObjects(objects) {
 }
 
 function executeStep(sceneGraph, step) {
+  if (step.type === ACTION_TYPES.SELECT_VARIANT) {
+    const { groupId, variantIndex } = step.parameters ?? {};
+    return {
+      errors: [],
+      measurements: [],
+      previewUpdate: {
+        selectionUpdate: { [Number(groupId)]: Number(variantIndex) },
+      },
+    };
+  }
+
   const targetObject = findSceneObject(sceneGraph, step.target?.objectId);
   const ruleErrors = validateProductRules(step, targetObject);
 
@@ -88,6 +99,8 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
   const measurements = [];
   const stepUpdates = [];
   const errors = [];
+  /** @type {Record<number, number> | null} */
+  let selectionUpdate = null;
 
   const panelLabSteps = actionPlan.steps.filter((s) => s.type === ACTION_TYPES.UPDATE_PANEL_LAB);
   const sceneSteps = actionPlan.steps.filter((s) => s.type !== ACTION_TYPES.UPDATE_PANEL_LAB);
@@ -97,6 +110,12 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
     measurements.push(...stepResult.measurements);
 
     if (stepResult.previewUpdate) {
+      if (stepResult.previewUpdate.selectionUpdate) {
+        selectionUpdate = {
+          ...(selectionUpdate ?? {}),
+          ...stepResult.previewUpdate.selectionUpdate
+        };
+      }
       stepUpdates.push({
         stepId: step.stepId,
         type: step.type,
@@ -141,7 +160,8 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
     previewUpdate: {
       stepUpdates,
       ...(includesObjectPreview ? { objects: sceneGraph.objects } : {}),
-      ...(panelLabResult ? { panelLab: panelLabResult.panelLab } : {})
+      ...(panelLabResult ? { panelLab: panelLabResult.panelLab } : {}),
+      ...(selectionUpdate ? { selectionUpdate } : {})
     },
     sceneDiff: panelLabResult
       ? [...sceneDiff, ...panelLabResult.diff.map((d) => ({ ...d, kind: 'panelLab' }))]

@@ -96,6 +96,19 @@ function createStepForIntent({ requestId, intent, command, targetObject }) {
     });
   }
 
+  if (intent === ACTION_TYPES.SELECT_VARIANT) {
+    const nums = command.match(/\d+/g)?.map(Number) ?? [];
+    const groupId = nums[0] ?? 0;
+    const variantIndex = nums[1] ?? 0;
+    return createActionStep({
+      stepId: createStepId(requestId, 1),
+      type: ACTION_TYPES.SELECT_VARIANT,
+      target: { objectId: `group-${groupId}` },
+      parameters: { groupId, variantIndex },
+      reason: `Select variant ${variantIndex} in group ${groupId}.`,
+    });
+  }
+
   return createActionStep({
     stepId: createStepId(requestId, 1),
     type: ACTION_TYPES.DOWNLOAD_UPDATED_SCENE,

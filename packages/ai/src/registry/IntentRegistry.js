@@ -245,6 +245,28 @@ export const INTENT_REGISTRY = [
     knob: { paths: ['camera.fov'], op: 'set', valueKind: 'number', clamp: [20, 90] }
   },
   {
+    type: 'select_variant',
+    description: 'Select a specific variant index within a named group.',
+    examples: [
+      'select variant 1 in group 2',
+      'switch cone to option 0',
+      'group 3 variant 2',
+      'выбери вариант 1 группы 2',
+      'переключи группу 1 на вариант 0',
+    ],
+    parameters: [
+      { name: 'groupId', description: 'Numeric group id (0-based or 1-based from utterance).' },
+      { name: 'variantIndex', description: 'Numeric variant index to activate.' },
+    ],
+    detectionPatterns: [
+      /select variant|switch.*variant|variant\s+\d|вариант\s+\d/i,
+      /group\s+\d.*variant|variant.*group\s+\d/i,
+      /переключи группу|выбери вариант/i,
+    ],
+    scopes: ['configurator'],
+    kind: 'scene',
+  },
+  {
     type: 'update_panel_lab',
     description: 'Apply a sparse panelLab settings patch to the scene.',
     examples: [],

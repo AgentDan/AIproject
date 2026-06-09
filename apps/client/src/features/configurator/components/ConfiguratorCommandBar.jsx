@@ -84,6 +84,11 @@ export function ConfiguratorCommandBar({ modelKey }) {
           useViewerSettingsStore.getState().hydrateFromPanelLab(panelLabUpdate);
         }
 
+        const selectionUpdate = previewUpdate?.selectionUpdate;
+        if (selectionUpdate && typeof selectionUpdate === 'object') {
+          useConfiguratorStore.getState().setSelection(selectionUpdate);
+        }
+
         if (payload?.responseType === 'help' || payload?.data?.kind === 'unknown') {
           setServerNotice(buildServerNoticeFromPayload(payload));
           return true;
