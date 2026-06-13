@@ -57,8 +57,6 @@ async function handlePostCommands(req, res) {
     };
   }
 
-  console.log('clientRequest My', clientRequest);
-
   const validationErrors = validateClientRequest(clientRequest);
 
   if (validationErrors.length > 0) {
