@@ -9,7 +9,7 @@
  * @description
  * - `configurator` — обычный 3D-конфигуратор (только scene-команды).
  * - `panel-lab` — редактор Panel Lab (`?labKey=`); scene + knob-команды.
- * - `assistant` — страница AI Assistant; те же scene-команды, что и в configurator.
+ * - `assistant` — страница AI Assistant; только overlay-команды Bubble и Clear bubble.
  */
 
 /**
@@ -108,7 +108,7 @@ export const INTENT_REGISTRY = [
       { name: 'delta', description: 'Optional axis offsets for the MVP transform.' }
     ],
     detectionPatterns: [/\bmove\b/i, /\bshift\b/i, /\btranslate\b/i],
-    scopes: ['configurator', 'panel-lab', 'assistant'],
+    scopes: ['configurator', 'panel-lab'],
     kind: 'scene'
   },
   {
@@ -120,7 +120,7 @@ export const INTENT_REGISTRY = [
       { name: 'color', description: 'CSS-style color literal or palette name.' }
     ],
     detectionPatterns: [/\bcolor\b/i, /\bcolour\b/i, /\bpaint\b/i],
-    scopes: ['configurator', 'panel-lab', 'assistant'],
+    scopes: ['configurator', 'panel-lab'],
     kind: 'scene'
   },
   {
@@ -129,7 +129,7 @@ export const INTENT_REGISTRY = [
     examples: ['Show bounding boxes', 'Outline the bounds'],
     parameters: [{ name: 'targetObjectIds', description: 'Optional subset of objects.' }],
     detectionPatterns: [/bounding box/i, /bounds/i, /\bbox\b/i],
-    scopes: ['configurator', 'panel-lab', 'assistant'],
+    scopes: ['configurator', 'panel-lab'],
     kind: 'scene'
   },
   {
@@ -141,7 +141,7 @@ export const INTENT_REGISTRY = [
       { name: 'toObjectId', description: 'Second mesh / object.' }
     ],
     detectionPatterns: [/\bmeasure\b/i, /\bdistance\b/i],
-    scopes: ['configurator', 'panel-lab', 'assistant'],
+    scopes: ['configurator', 'panel-lab'],
     kind: 'scene'
   },
   {
@@ -150,7 +150,7 @@ export const INTENT_REGISTRY = [
     examples: ['Download the scene', 'Export glTF snapshot'],
     parameters: [{ name: 'format', description: 'Optional export hint (e.g. gltf, glb).' }],
     detectionPatterns: [/\bdownload\b/i, /\bexport\b/i],
-    scopes: ['configurator', 'panel-lab', 'assistant'],
+    scopes: ['configurator', 'panel-lab'],
     kind: 'scene'
   },
   {
@@ -272,6 +272,24 @@ export const INTENT_REGISTRY = [
     examples: [],
     parameters: [{ name: 'patch', description: 'Sparse panelLab v1 patch object.' }],
     detectionPatterns: [],
+    kind: 'scene'
+  },
+  {
+    type: 'bubble',
+    description: 'Show a red circle overlay in the center of the assistant preview.',
+    examples: ['Bubble', 'bubble'],
+    parameters: [],
+    detectionPatterns: [/^bubble$/i],
+    scopes: ['assistant'],
+    kind: 'scene'
+  },
+  {
+    type: 'clear_bubble',
+    description: 'Remove the red circle overlay from the assistant preview.',
+    examples: ['Clear bubble', 'clear bubble'],
+    parameters: [],
+    detectionPatterns: [/^clear bubble$/i],
+    scopes: ['assistant'],
     kind: 'scene'
   },
   {

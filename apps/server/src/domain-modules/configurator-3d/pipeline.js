@@ -23,6 +23,26 @@ function cloneObjects(objects) {
 }
 
 function executeStep(sceneGraph, step) {
+  if (step.type === ACTION_TYPES.BUBBLE) {
+    return {
+      errors: [],
+      measurements: [],
+      previewUpdate: {
+        assistantOverlay: { redCircle: true }
+      }
+    };
+  }
+
+  if (step.type === ACTION_TYPES.CLEAR_BUBBLE) {
+    return {
+      errors: [],
+      measurements: [],
+      previewUpdate: {
+        assistantOverlay: { redCircle: false }
+      }
+    };
+  }
+
   if (step.type === ACTION_TYPES.SELECT_VARIANT) {
     const { groupId, variantIndex } = step.parameters ?? {};
     return {
@@ -101,6 +121,8 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
   const errors = [];
   /** @type {Record<number, number> | null} */
   let selectionUpdate = null;
+  /** @type {{ redCircle?: boolean } | null} */
+  let assistantOverlay = null;
 
   const panelLabSteps = actionPlan.steps.filter((s) => s.type === ACTION_TYPES.UPDATE_PANEL_LAB);
   const sceneSteps = actionPlan.steps.filter((s) => s.type !== ACTION_TYPES.UPDATE_PANEL_LAB);
@@ -114,6 +136,12 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
         selectionUpdate = {
           ...(selectionUpdate ?? {}),
           ...stepResult.previewUpdate.selectionUpdate
+        };
+      }
+      if (stepResult.previewUpdate.assistantOverlay) {
+        assistantOverlay = {
+          ...(assistantOverlay ?? {}),
+          ...stepResult.previewUpdate.assistantOverlay
         };
       }
       stepUpdates.push({
@@ -161,7 +189,8 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
       stepUpdates,
       ...(includesObjectPreview ? { objects: sceneGraph.objects } : {}),
       ...(panelLabResult ? { panelLab: panelLabResult.panelLab } : {}),
-      ...(selectionUpdate ? { selectionUpdate } : {})
+      ...(selectionUpdate ? { selectionUpdate } : {}),
+      ...(assistantOverlay ? { assistantOverlay } : {})
     },
     sceneDiff: panelLabResult
       ? [...sceneDiff, ...panelLabResult.diff.map((d) => ({ ...d, kind: 'panelLab' }))]

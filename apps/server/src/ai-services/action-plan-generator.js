@@ -109,6 +109,26 @@ function createStepForIntent({ requestId, intent, command, targetObject }) {
     });
   }
 
+  if (intent === ACTION_TYPES.BUBBLE) {
+    return createActionStep({
+      stepId: createStepId(requestId, 1),
+      type: ACTION_TYPES.BUBBLE,
+      target: { objectId: 'assistant-overlay' },
+      parameters: { redCircle: true },
+      reason: 'Assistant overlay: show centered red circle.'
+    });
+  }
+
+  if (intent === ACTION_TYPES.CLEAR_BUBBLE) {
+    return createActionStep({
+      stepId: createStepId(requestId, 1),
+      type: ACTION_TYPES.CLEAR_BUBBLE,
+      target: { objectId: 'assistant-overlay' },
+      parameters: { redCircle: false },
+      reason: 'Assistant overlay: remove centered red circle.'
+    });
+  }
+
   return createActionStep({
     stepId: createStepId(requestId, 1),
     type: ACTION_TYPES.DOWNLOAD_UPDATED_SCENE,

@@ -12,6 +12,14 @@ describe('detectIntent scope', () => {
   it('matches scene commands in configurator mode', () => {
     assert.equal(detectIntent('move left', 'configurator').intent, 'move_object');
   });
+
+  it('matches assistant overlay commands only in assistant mode', () => {
+    assert.equal(detectIntent('Bubble', 'assistant').intent, 'bubble');
+    assert.equal(detectIntent('clear bubble', 'assistant').intent, 'clear_bubble');
+    assert.equal(detectIntent('move left', 'assistant').intent, 'unknown_command');
+    assert.equal(detectIntent('Bubble', 'configurator').intent, 'unknown_command');
+    assert.equal(detectIntent('clear bubble', 'configurator').intent, 'unknown_command');
+  });
 });
 
 describe('HelpService scope', () => {
@@ -20,7 +28,7 @@ describe('HelpService scope', () => {
     const types = help.intents.map((e) => e.type);
     assert.ok(types.includes('move_object'));
     assert.ok(!types.includes('panel_lab_light_intensity'));
-    assert.equal(types.length, 5);
+    assert.equal(types.length, 6);
   });
 
   it('lists scene and knob commands for panel-lab mode', () => {
@@ -29,5 +37,14 @@ describe('HelpService scope', () => {
     assert.ok(types.includes('move_object'));
     assert.ok(types.includes('panel_lab_light_intensity'));
     assert.equal(types.length, 13);
+  });
+
+  it('lists only Bubble and Clear bubble for assistant mode', () => {
+    const help = HelpService.getIntentList('assistant');
+    const types = help.intents.map((e) => e.type);
+    assert.ok(types.includes('bubble'));
+    assert.ok(types.includes('clear_bubble'));
+    assert.ok(!types.includes('move_object'));
+    assert.equal(types.length, 2);
   });
 });

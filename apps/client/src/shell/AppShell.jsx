@@ -10,6 +10,7 @@ export default function AppShell() {
   const [response, setResponse] = useState(null);
   const [error, setError] = useState('');
   const [serverNotice, setServerNotice] = useState(null);
+  const [showRedCircle, setShowRedCircle] = useState(false);
   const serverNoticeRef = useRef(/** @type {HTMLDivElement | null} */ (null));
 
   useEffect(() => {
@@ -69,6 +70,10 @@ export default function AppShell() {
 
       setResponse(payload);
       setServerNotice(buildServerNoticeFromPayload(payload));
+      const overlay = payload?.sceneResult?.previewUpdate?.assistantOverlay;
+      if (overlay && typeof overlay.redCircle === 'boolean') {
+        setShowRedCircle(overlay.redCircle);
+      }
       return true;
     } catch (requestError) {
       const raw =
@@ -94,7 +99,11 @@ export default function AppShell() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
-      <Preview3D previewObject={previewObject} previewColor={previewColor} />
+      <Preview3D
+        previewObject={previewObject}
+        previewColor={previewColor}
+        showRedCircle={showRedCircle}
+      />
 
       <ResultViewer serverNotice={serverNotice} serverNoticeRef={serverNoticeRef} />
 
