@@ -136,7 +136,7 @@ export function resolveConfiguratorCommandMode(search = '') {
 }
 
 /**
- * @param {{ modelKey?: string, selection?: object, panelLab?: object, sceneData?: object, localObjectStates?: Record<string, object>, mode?: string }} args
+ * @param {{ modelKey?: string, selection?: object, panelLab?: object, sceneData?: object, localObjectStates?: Record<string, object>, mode?: string, projects?: object[] }} args
  */
 export function buildConfiguratorClientState({
   modelKey,
@@ -144,7 +144,8 @@ export function buildConfiguratorClientState({
   panelLab,
   sceneData,
   localObjectStates,
-  mode
+  mode,
+  projects
 }) {
   const sel = /** @type {Record<number, number>} */ (selection || {});
 
@@ -155,6 +156,7 @@ export function buildConfiguratorClientState({
     panelLab: panelLab || null,
     mode: mode || 'configurator',
     source: 'apps/client/configurator',
+    projects: Array.isArray(projects) ? projects : [],
     objects: buildConfiguratorObjectsFromSceneData(sceneData, sel, localObjectStates || {})
   };
 }

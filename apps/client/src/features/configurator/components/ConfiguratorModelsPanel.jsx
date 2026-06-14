@@ -6,6 +6,8 @@ import {
   DEFAULT_LIQUID_GLASS_WORKSPACE_TUNE,
   LiquidGlassWorkspaceButton,
 } from '../../../components/ui/LiquidGlass';
+import { buildProjectCatalog, modelListKey } from '../domain/modelCatalog.js';
+import { useConfiguratorStore } from '../store/configuratorStore.js';
 
 /** Button row width (rem); unchanged when the gray panel grows wider. */
 const BUTTON_ROW_MAX_REM = 17;
@@ -28,22 +30,6 @@ function useIsAdminModeFromLocation() {
     const labKey = params.get('labKey');
     return Boolean(labKey && labKey.trim());
   }, [location.search]);
-}
-
-function modelListKey(model) {
-  if (model?.source === 'local-gltf') {
-    const localPath = String(model?.localPath || model?.id || '');
-    const name = localPath.includes('/')
-      ? localPath.slice(localPath.lastIndexOf('/') + 1)
-      : localPath.replace(/^local:/i, '');
-    if (name) {
-      return `local:${name}`;
-    }
-  }
-  if (model?.s3Key) {
-    return String(model.s3Key);
-  }
-  return '';
 }
 
 export function ConfiguratorModelsPanel() {
@@ -69,9 +55,12 @@ export function ConfiguratorModelsPanel() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || 'Failed to load models');
-      setModels(Array.isArray(data.models) ? data.models : []);
+      const nextModels = Array.isArray(data.models) ? data.models : [];
+      setModels(nextModels);
+      useConfiguratorStore.getState().setProjects(buildProjectCatalog(nextModels));
     } catch (err) {
       setModels([]);
+      useConfiguratorStore.getState().setProjects([]);
       setStatus({ type: 'error', message: err.message });
     } finally {
       setIsLoading(false);

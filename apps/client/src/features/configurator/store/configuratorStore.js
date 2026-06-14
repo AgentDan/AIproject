@@ -11,11 +11,14 @@ import { create } from 'zustand';
  *
  * @type {import('zustand').Store<{
  *   selection: Selection,
+ *   projects: { index: number, modelKey: string, title: string }[],
  *   setSelection: (v: Partial<Selection> | ((p: Selection) => Partial<Selection>)) => void,
+ *   setProjects: (projects: { index: number, modelKey: string, title: string }[]) => void,
  * }>}
  */
 export const useConfiguratorStore = create((set) => ({
   selection: {},
+  projects: [],
   setSelection: (v) =>
     set((state) => ({
       selection: {
@@ -23,5 +26,7 @@ export const useConfiguratorStore = create((set) => ({
         ...(typeof v === 'function' ? v(state.selection) : v),
       },
     })),
+  setProjects: (projects) =>
+    set({ projects: Array.isArray(projects) ? projects : [] }),
   resetSelection: () => set({ selection: {} }),
 }));

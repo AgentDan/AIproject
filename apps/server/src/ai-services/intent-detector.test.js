@@ -11,6 +11,7 @@ describe('detectIntent scope', () => {
 
   it('matches scene commands in configurator mode', () => {
     assert.equal(detectIntent('move left', 'configurator').intent, 'move_object');
+    assert.equal(detectIntent('select project 1', 'configurator').intent, 'select_project');
   });
 
   it('matches assistant overlay commands only in assistant mode', () => {
@@ -28,7 +29,7 @@ describe('HelpService scope', () => {
     const types = help.intents.map((e) => e.type);
     assert.ok(types.includes('move_object'));
     assert.ok(!types.includes('panel_lab_light_intensity'));
-    assert.equal(types.length, 6);
+    assert.equal(types.length, 7);
   });
 
   it('lists scene and knob commands for panel-lab mode', () => {

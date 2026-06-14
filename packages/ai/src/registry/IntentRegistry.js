@@ -267,6 +267,30 @@ export const INTENT_REGISTRY = [
     kind: 'scene',
   },
   {
+    type: 'select_project',
+    description: 'Switch the active 3D project / model by list index or project title.',
+    examples: [
+      'select project 1',
+      'switch to project 2',
+      'open model 0',
+      'project Kitchen',
+      'выбери проект 2',
+      'переключи проект Studio',
+    ],
+    parameters: [
+      { name: 'projectIndex', description: 'Index in the client project catalog.' },
+      { name: 'modelKey', description: 'Resolved model key for navigation.' },
+      { name: 'title', description: 'Display title when matched by name.' },
+    ],
+    detectionPatterns: [
+      /select project|switch.*project|open project|project\s+\d|project\s+[a-zа-яё]/i,
+      /select model|switch.*model|open model|model\s+\d/i,
+      /выбери проект|переключи проект|проект\s+\d/i,
+    ],
+    scopes: ['configurator'],
+    kind: 'scene',
+  },
+  {
     type: 'update_panel_lab',
     description: 'Apply a sparse panelLab settings patch to the scene.',
     examples: [],

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "node --test src/workflow-engine/execute-workflow.test.js src/ai-services/knob-plan-builder.test.js src/ai-services/intent-detector.test.js src/domain-modules/configurator-3d/pipeline.test.js",
+    "test": "node --test src/workflow-engine/execute-workflow.test.js src/ai-services/knob-plan-builder.test.js src/ai-services/project-plan-builder.test.js src/ai-services/intent-detector.test.js src/domain-modules/configurator-3d/pipeline.test.js",
     "kb:index": "node src/knowledge-base/indexer.js"
   },
   "dependencies": {

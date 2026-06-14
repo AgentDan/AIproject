@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { postCommand } from '../../../api/client.js';
 import { getAuthHeaders } from '../../../api/authFetch.js';
 import { useSceneStore } from '../../../shared/scene/sceneStore.js';
@@ -16,6 +16,7 @@ import {
 
 export function ConfiguratorCommandBar({ modelKey }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [serverNotice, setServerNotice] = useState(null);
   const serverNoticeRef = useRef(/** @type {HTMLDivElement | null} */ (null));
 
@@ -39,6 +40,7 @@ export function ConfiguratorCommandBar({ modelKey }) {
   }, [serverNotice]);
 
   const selection = useConfiguratorStore((s) => s.selection);
+  const projects = useConfiguratorStore((s) => s.projects);
   const panelLab = useViewerSettingsStore((s) => s.panelLab);
   const sceneData = useSceneStore((s) => s.sceneData);
 
@@ -60,6 +62,7 @@ export function ConfiguratorCommandBar({ modelKey }) {
           selection,
           panelLab,
           sceneData,
+          projects,
           mode: resolveConfiguratorCommandMode(location.search)
         });
 
@@ -89,6 +92,17 @@ export function ConfiguratorCommandBar({ modelKey }) {
           useConfiguratorStore.getState().setSelection(selectionUpdate);
         }
 
+        const modelKeyUpdate = previewUpdate?.modelKeyUpdate;
+        if (typeof modelKeyUpdate === 'string' && modelKeyUpdate.trim()) {
+          const next = new URLSearchParams(location.search);
+          next.delete('labKey');
+          next.set('modelKey', modelKeyUpdate.trim());
+          navigate(
+            { pathname: location.pathname, search: `?${next.toString()}` },
+            { replace: false }
+          );
+        }
+
         if (payload?.responseType === 'help' || payload?.data?.kind === 'unknown') {
           setServerNotice(buildServerNoticeFromPayload(payload));
           return true;
@@ -109,7 +123,7 @@ export function ConfiguratorCommandBar({ modelKey }) {
         return false;
       }
     },
-    [modelKey, panelLab, sceneData, selection, location.search]
+    [modelKey, panelLab, sceneData, selection, projects, location.pathname, location.search, navigate]
   );
 
   if (!modelKey) {

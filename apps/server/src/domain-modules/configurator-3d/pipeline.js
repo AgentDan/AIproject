@@ -54,6 +54,22 @@ function executeStep(sceneGraph, step) {
     };
   }
 
+  if (step.type === ACTION_TYPES.SELECT_PROJECT) {
+    const { modelKey, projectIndex, title } = step.parameters ?? {};
+    return {
+      errors: [],
+      measurements: [],
+      previewUpdate: {
+        modelKeyUpdate: modelKey,
+        projectUpdate: {
+          modelKey,
+          projectIndex: Number(projectIndex),
+          title: title || null
+        }
+      }
+    };
+  }
+
   const targetObject = findSceneObject(sceneGraph, step.target?.objectId);
   const ruleErrors = validateProductRules(step, targetObject);
 
@@ -123,6 +139,8 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
   let selectionUpdate = null;
   /** @type {{ redCircle?: boolean } | null} */
   let assistantOverlay = null;
+  /** @type {string | null} */
+  let modelKeyUpdate = null;
 
   const panelLabSteps = actionPlan.steps.filter((s) => s.type === ACTION_TYPES.UPDATE_PANEL_LAB);
   const sceneSteps = actionPlan.steps.filter((s) => s.type !== ACTION_TYPES.UPDATE_PANEL_LAB);
@@ -143,6 +161,9 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
           ...(assistantOverlay ?? {}),
           ...stepResult.previewUpdate.assistantOverlay
         };
+      }
+      if (stepResult.previewUpdate.modelKeyUpdate) {
+        modelKeyUpdate = stepResult.previewUpdate.modelKeyUpdate;
       }
       stepUpdates.push({
         stepId: step.stepId,
@@ -190,7 +211,8 @@ export async function executeConfigurator3dPipeline(sceneContext, actionPlan) {
       ...(includesObjectPreview ? { objects: sceneGraph.objects } : {}),
       ...(panelLabResult ? { panelLab: panelLabResult.panelLab } : {}),
       ...(selectionUpdate ? { selectionUpdate } : {}),
-      ...(assistantOverlay ? { assistantOverlay } : {})
+      ...(assistantOverlay ? { assistantOverlay } : {}),
+      ...(modelKeyUpdate ? { modelKeyUpdate } : {})
     },
     sceneDiff: panelLabResult
       ? [...sceneDiff, ...panelLabResult.diff.map((d) => ({ ...d, kind: 'panelLab' }))]

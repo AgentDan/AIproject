@@ -6,6 +6,15 @@ import {
 import { getIntentEntry, isIntentAllowedForScope } from '@ai-product-scene-platform/ai';
 import { cloneDefaultPanelLab } from '@ai-product-scene-platform/panel-lab-schema';
 import { buildKnobStep } from './knob-plan-builder.js';
+import { buildProjectStep } from './project-plan-builder.js';
+
+function resolveProjects(sceneContext) {
+  return (
+    sceneContext.commandContext?.clientState?.projects ||
+    sceneContext.metadata?.configurator?.projects ||
+    []
+  );
+}
 
 function createPlanId(requestId) {
   return `plan-${requestId}`;
@@ -154,6 +163,13 @@ export function generateActionPlan(sceneContext, intentResult, sceneUnderstandin
   if (entry?.kind === 'knob') {
     const panelLab = resolvePanelLab(sceneContext);
     step = buildKnobStep({ requestId, entry, utterance: command, panelLab });
+    if (!step) return null;
+  } else if (intentResult.intent === ACTION_TYPES.SELECT_PROJECT) {
+    step = buildProjectStep({
+      requestId,
+      utterance: command,
+      projects: resolveProjects(sceneContext)
+    });
     if (!step) return null;
   } else {
     step = createStepForIntent({

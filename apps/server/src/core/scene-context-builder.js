@@ -111,7 +111,8 @@ export async function buildSceneContext(clientRequest) {
         domain: clientState.domain || null,
         modelKey: clientState.modelKey || null,
         panelLab,
-        selection: clientState.selection || null
+        selection: clientState.selection || null,
+        projects: Array.isArray(clientState.projects) ? clientState.projects : null
       }
     },
     commandContext: {
