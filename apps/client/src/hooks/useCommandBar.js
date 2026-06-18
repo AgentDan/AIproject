@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSpeechCommand } from './useSpeechCommand.js';
 
+function isTypingTarget(target) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tag = target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    return true;
+  }
+  return target.isContentEditable;
+}
+
 /**
  * Shared command bar interaction (Assistant + Configurator): expand/collapse, voice, outside click.
  */
-export function useCommandBar({ onSubmit, disabled = false } = {}) {
+export function useCommandBar({ onSubmit, disabled = false, keyboardBlocked = false } = {}) {
   const {
     command,
     setCommand,
@@ -23,6 +34,8 @@ export function useCommandBar({ onSubmit, disabled = false } = {}) {
   const textInputRef = useRef(null);
   const isListeningRef = useRef(isListening);
   const isSubmittingRef = useRef(isSubmitting);
+  const showCommandFieldRef = useRef(false);
+  const handleRoundButtonRef = useRef(/** @type {(() => void) | null} */ (null));
   isListeningRef.current = isListening;
   isSubmittingRef.current = isSubmitting;
 
@@ -31,6 +44,7 @@ export function useCommandBar({ onSubmit, disabled = false } = {}) {
     commandBarExpanded ||
     isListening ||
     (isSubmitting && inputType === 'voice');
+  showCommandFieldRef.current = showCommandField;
 
   useEffect(() => {
     if (!showCommandField || disabled) {
@@ -123,6 +137,55 @@ export function useCommandBar({ onSubmit, disabled = false } = {}) {
     startListening,
     stopListening
   ]);
+  handleRoundButtonRef.current = handleRoundButton;
+
+  useEffect(() => {
+    if (disabled || keyboardBlocked) {
+      return undefined;
+    }
+
+    function handleKeyDown(event) {
+      if (event.defaultPrevented || event.repeat) {
+        return;
+      }
+
+      const input = textInputRef.current;
+      const target = event.target;
+      const typingElsewhere = isTypingTarget(target) && target !== input;
+
+      if (event.key === ' ') {
+        if (typingElsewhere || target === input || isSubmittingRef.current) {
+          return;
+        }
+
+        if (canUseSpeech && !showCommandFieldRef.current) {
+          event.preventDefault();
+          handleRoundButtonRef.current?.();
+          return;
+        }
+
+        if (!canUseSpeech && input) {
+          event.preventDefault();
+          input.focus();
+        }
+        return;
+      }
+
+      if (event.key !== 'Enter') {
+        return;
+      }
+
+      if (typingElsewhere || target === input || isSubmittingRef.current || !showCommandFieldRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+      handleRoundButtonRef.current?.();
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [canUseSpeech, disabled, keyboardBlocked]);
 
   return {
     command,

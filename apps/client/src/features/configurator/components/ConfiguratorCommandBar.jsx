@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { postCommand } from '../../../api/client.js';
 import { getAuthHeaders } from '../../../api/authFetch.js';
+import { useDismissServerNotice } from '../../../hooks/useDismissServerNotice.js';
 import { useSceneStore } from '../../../shared/scene/sceneStore.js';
 import { useConfiguratorStore } from '../store/configuratorStore.js';
 import { useAiSceneStore } from '../store/aiSceneStore.js';
@@ -20,24 +21,7 @@ export function ConfiguratorCommandBar({ modelKey }) {
   const [serverNotice, setServerNotice] = useState(null);
   const serverNoticeRef = useRef(/** @type {HTMLDivElement | null} */ (null));
 
-  useEffect(() => {
-    if (!serverNotice) {
-      return undefined;
-    }
-
-    function handlePointerDown(/** @type {PointerEvent} */ event) {
-      if (
-        !serverNoticeRef.current ||
-        serverNoticeRef.current.contains(/** @type {Node | null} */ (event.target))
-      ) {
-        return;
-      }
-      setServerNotice(null);
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [serverNotice]);
+  useDismissServerNotice(serverNotice, setServerNotice, serverNoticeRef);
 
   const selection = useConfiguratorStore((s) => s.selection);
   const projects = useConfiguratorStore((s) => s.projects);
@@ -136,6 +120,7 @@ export function ConfiguratorCommandBar({ modelKey }) {
       <CommandBar
         inputId="configurator-command-input"
         placeholder="Type command"
+        keyboardBlocked={Boolean(serverNotice)}
         onSubmit={handleSubmit}
       />
     </>

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { getApiBaseUrl, postCommand } from '../api/client.js';
 import { getAuthHeaders } from '../api/authFetch.js';
+import { useDismissServerNotice } from '../hooks/useDismissServerNotice.js';
 import CommandBar from '../widgets/CommandBar.jsx';
 import Preview3D from '../widgets/Preview3D.jsx';
 import ResultViewer from '../widgets/ResultViewer.jsx';
@@ -13,24 +14,7 @@ export default function AppShell() {
   const [showRedCircle, setShowRedCircle] = useState(false);
   const serverNoticeRef = useRef(/** @type {HTMLDivElement | null} */ (null));
 
-  useEffect(() => {
-    if (!serverNotice) {
-      return undefined;
-    }
-
-    function handlePointerDown(/** @type {PointerEvent} */ event) {
-      if (
-        !serverNoticeRef.current ||
-        serverNoticeRef.current.contains(/** @type {Node | null} */ (event.target))
-      ) {
-        return;
-      }
-      setServerNotice(null);
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [serverNotice]);
+  useDismissServerNotice(serverNotice, setServerNotice, serverNoticeRef);
 
   const handleSubmit = useCallback(async ({ command, inputType }) => {
     if (!command) {
@@ -110,6 +94,7 @@ export default function AppShell() {
       <CommandBar
         inputId="assistant-command-input"
         placeholder="Type command"
+        keyboardBlocked={Boolean(serverNotice)}
         onSubmit={handleSubmit}
       />
 

@@ -8,6 +8,7 @@ import { useCommandBar } from '../hooks/useCommandBar.js';
  *   inputId?: string,
  *   placeholder?: string,
  *   disabled?: boolean,
+ *   keyboardBlocked?: boolean,
  *   onSubmit: (args: { command: string, inputType: string }) => Promise<boolean>,
  * }} props
  * onSubmit returns true when command was accepted (clears field + collapses when voice enabled).
@@ -16,6 +17,7 @@ export default function CommandBar({
   inputId = 'platform-command-input',
   placeholder = 'Type command',
   disabled = false,
+  keyboardBlocked = false,
   onSubmit
 }) {
   const {
@@ -29,7 +31,7 @@ export default function CommandBar({
     commandBarRef,
     textInputRef,
     handleRoundButton
-  } = useCommandBar({ onSubmit, disabled });
+  } = useCommandBar({ onSubmit, disabled, keyboardBlocked });
 
   if (disabled) {
     return null;
