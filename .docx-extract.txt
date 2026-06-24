@@ -1,0 +1,430 @@
+﻿AIproject
+Функциональная блок-схема
+и подробное описание алгоритма обработки команды
+Структура документа
+ЧАСТЬ I · Блок-схема
+визуальная карта всех функций и переходов, A4 альбомная (с разделением на полосы)
+ЧАСТЬ II · Описание стадий
+по одной странице на стадию: краткое и подробное описание + таблица функций со статусами
+ЧАСТЬ III · Принципы архитектуры
+итог: контекст вместо состояния, детерминированный AI, разделение слоёв, multi-step
+Легенда статусов функций
+ИСПОЛЬЗ
+функция на основном пути выполнения команды
+СЛАБО
+вызывается, но слабо влияет на результат
+СТАБ
+мёртвый код / стаб: вызывается, но результат не используется
+ВЕТКА
+ветка не выбрана для нормального пути
+ЧАСТЬ I — Блок-схема
+Полная функциональная блок-схема алгоритма. Из-за её размера она разделена на две страницы: верхняя половина (стадии 0–5) и нижняя половина (стадии 6–10). Один блок = одна функция. Жёлтые блоки с жирной обводкой — ключевые функции (entry-points стадий). Синие пунктирные — стабы (мёртвый код, зарезервировано под будущий LLM). Ромбы — условные переходы с метками 0/1. Красные обходные линии — META (короткое замыкание справки) и 403 (отказ по правам).
+Блок-схема (продолжение): стадии 6–10
+ЧАСТЬ II — Описание стадий
+Каждая стадия на отдельной странице: цветной заголовок, подробное описание из нескольких абзацев, затем таблица всех функций с указанием статуса (ИСПОЛЬЗ / СЛАБО / СТАБ / ВЕТКА).
+0
+CLIENT — точка входа
+apps/client/src/shell/AppShell.jsx · ConfiguratorCommandBar.jsx · api/client.js · api/authFetch.js
+Подробное описание
+Всё начинается в браузере. Пользователь набирает команду в поле (или диктует голосом через Web Speech API) и жмёт «Отправить». Обработчик handleSubmit() собирает текущее состояние клиента в объект clientState — это «фотография» того, что сейчас видно: какой режим (mode: assistant | configurator | panel-lab, определяется по URL через resolveConfiguratorCommandMode), какой домен (domain: assistant | configurator-3d), какие объекты в сцене, текущие настройки panelLab (свет, туман, камера).
+К запросу прикладывается JWT-токен из getAuthHeaders() — для команд ассистента это необязательно (аноним разрешён), для конфигуратора без роли сервер позже вернёт 403.
+postCommand() делает fetch POST /api/commands с телом {command, inputType, clientState} и ждёт JSON-ответ. Адрес сервера берётся из getApiBaseUrl() — либо VITE_API_URL, либо дефолтный http://localhost:3001.
+Ключевое: клиент не делает никакой обработки текста — просто упаковывает контекст и отправляет на сервер.
+Функции стадии
+handleSubmit()
+Клиентский обработчик кнопки «Отправить». Собирает clientState и вызывает postCommand().
+ИСПОЛЬЗ
+resolveConfiguratorCommandMode(search)
+Читает URL: ?labKey → &apos;panel-lab&apos;, иначе &apos;configurator&apos;. Этот mode становится scope команды.
+ИСПОЛЬЗ
+buildConfiguratorClientState({…})
+Снимок состояния: {mode, domain, panelLab, objects[]} — то, что сервер использует как контекст.
+ИСПОЛЬЗ
+getAuthHeaders()
+Достаёт JWT-токен из локального хранилища и формирует заголовок Authorization: Bearer …
+ИСПОЛЬЗ
+postCommand({command, inputType, clientState})
+fetch POST /api/commands. Возвращает JSON-ответ обратно в handleSubmit.
+ИСПОЛЬЗ
+getApiBaseUrl()
+Читает VITE_API_URL или дефолт http://localhost:3001.
+ИСПОЛЬЗ
+useSpeechCommand() / startListening()
+Опциональный голосовой ввод через Web Speech API. Команду можно ввести и текстом.
+СЛАБО
+1
+API Layer
+apps/server/src/core/api/routes.js · middleware.js
+Подробное описание
+Express-сервер принимает HTTP POST. Запрос проходит через middleware: corsMiddleware (разрешает кросс-доменные запросы), apiRateLimit (защита от DDoS), wrapAsync (ловит ошибки в async-хендлерах). Эти три слоя — общая инфраструктура, к логике команды отношения не имеют.
+Затем handlePostCommands(req, res) — собственно «дверь» к нашей логике. Он проверяет что в теле есть command и clientState, генерирует уникальный requestId (формат req-{timestamp}-{rand} через createId) для логов и истории, и передаёт всё в orchestrateCommand(). Когда тот вернётся — записывает ответ через sendJson(res, 202, payload).
+mountRoutes(app) регистрирует этот хендлер один раз при старте сервера, во время обработки команды уже не вызывается.
+Функции стадии
+handlePostCommands(req, res)
+Хендлер POST /api/commands. Проверяет поля, создаёт requestId через createId(), вызывает orchestrateCommand(), отдаёт ответ через sendJson().
+ИСПОЛЬЗ
+createId(prefix)
+Генерирует уникальный id вида &apos;req-{timestamp}-{rand}&apos;. Для логов и истории.
+ИСПОЛЬЗ
+corsMiddleware
+Express CORS — разрешает запросы с клиента (браузер).
+СЛАБО
+apiRateLimit
+express-rate-limit: защита от DDoS.
+СЛАБО
+wrapAsync(fn)
+Оборачивает async handler, передаёт ошибки в next().
+СЛАБО
+mountRoutes(app)
+Один раз при старте: регистрирует POST /api/commands и другие роуты.
+СЛАБО
+2
+Orchestrator — главный дирижёр
+apps/server/src/core/orchestrator.js · infrastructure/storage/local-storage.js
+Подробное описание
+Самый важный файл с точки зрения архитектуры — но сам ничего не делает, только вызывает по порядку шесть этапов: recordCommandRequest → processRequest → buildSceneContext → runAiServicesPipeline → executeWorkflow → buildAcceptedCommandPayload.
+recordCommandRequest первым делом сохраняет команду в локальное хранилище: saveSession() фиксирует факт обращения, appendActionHistory() дописывает в журнал действий. Если запись провалилась — сразу 500 (без записи мы не знаем что произошло, лучше отказать).
+processRequest — ранний guard. Зовёт detectMetaIntent() из пакета @ai, который проверяет команду на «служебные» паттерны: list_commands, help, что ты умеешь. Если совпало — собирает help-ответ через HelpService.createHelpListingPayload() и возвращает {completed: true, payload}. Оркестратор видит это и сразу возвращает HTTP 202 минуя весь AI, workflow и домен. Это короткое замыкание для справки.
+Если же команда обычная — processRequest возвращает {completed: false} и работа продолжается.
+Функции стадии
+orchestrateCommand(clientRequest)
+async. Вызывает по порядку все этапы пайплайна. Сам логики не содержит.
+ИСПОЛЬЗ
+recordCommandRequest(clientRequest)
+Сохраняет команду в локальное хранилище через saveSession + appendActionHistory.
+ИСПОЛЬЗ
+processRequest(clientRequest, storage)
+Ранний meta-guard. Если detectMetaIntent сработал — собирает help-ответ и возвращает {completed:true}.
+ИСПОЛЬЗ
+detectMetaIntent(command)
+Из пакета @ai. Regex по &apos;list/help/что ты умеешь&apos;.
+ИСПОЛЬЗ
+buildMetaCommandPayload({…})
+Альтернативный выход: формирует HTTP 202 с message и data.commands[] для справки.
+ИСПОЛЬЗ
+Примечание:
+Ветка META (list_commands): processRequest → buildMetaCommandPayload → sendJson(202). Workflow Engine, AI и Domain НЕ вызываются. Это «короткое замыкание» для справки.
+3
+Scene Context Builder
+apps/server/src/core/scene-context-builder.js · @contracts · @panel-lab-schema
+Подробное описание
+Здесь собирается полный контекст для AI — SceneContext. Это структурированный «снимок» всего что AI должен знать о текущей ситуации.
+buildSceneContext запускает несколько асинхронных операций параллельно через Promise.all: getSession() — сохранённая сессия, getSceneMetadata(sceneId) — что было записано в локальное хранилище о сцене, getActionHistory(sessionId) — лог предыдущих команд (нужен для повторных действий типа «двигай дальше»).
+Потом собирает три ключевых блока: buildPreviewObjects(meta, clientState) — список объектов сцены (приоритет: то что прислал клиент → то что было сохранено → дефолт), buildPreviewHierarchy(objects) — дерево вложенности (в MVP плоское), buildPreviewMaterials(objects) — таблица материалов.
+Отдельная ветка — loadPanelLabFromLocalGltf(modelKey). Только для конфигуратора. Если клиент не передал panelLab, сервер пытается прочитать их из extras.panelLab в .gltf-файле модели на сервере. Это фолбэк для knob-команд.
+Перед возвратом весь объект прогоняется через createSceneContext() и validateSceneContext() из пакета @contracts — фабрика + zod-валидатор.
+Функции стадии
+buildSceneContext(clientRequest)
+async → {sceneContext, validationErrors}. Главный сборщик контекста.
+ИСПОЛЬЗ
+getSession() / getSceneMetadata() / getActionHistory()
+Promise.all: параллельное чтение из local-storage.
+ИСПОЛЬЗ
+buildPreviewObjects(meta, clientState)
+Объекты сцены: clientState.objects → sceneMetadata.objects → дефолт.
+ИСПОЛЬЗ
+buildPreviewHierarchy(objects)
+Плоская иерархия MVP: [{objectId, parentId:null, children:[]}].
+ИСПОЛЬЗ
+buildPreviewMaterials(objects)
+Таблица материалов: [{objectId, material:{color}}].
+ИСПОЛЬЗ
+loadPanelLabFromLocalGltf(modelKey)
+Фолбэк panelLab: читает extras.panelLab из .gltf на сервере.
+ИСПОЛЬЗ
+validateSceneContext(ctx)
+zod-валидатор итогового контекста перед передачей в AI.
+ИСПОЛЬЗ
+4
+AI Services Pipeline — дирижёр AI-стадий
+apps/server/src/ai-services/pipeline.js + 9 сопутствующих файлов
+Подробное описание
+Восемь шагов один за другим. resolveCommandScope() — одна строка: читает clientState.mode. Этот scope (assistant / configurator / panel-lab) фильтрует, какие команды вообще допустимы.
+detectIntent(command, scope) в intent-detector.js — главный шаг распознавания. Перебирает INTENT_DETECTION_RULES из реестра, для каждого правила проверяет: разрешён ли intent для scope (isIntentAllowedForScope), совпал ли regex. Возвращает {intent, confidence}.
+retrieve(command) — СТАБ. Должен искать релевантные документы в knowledge-base через embeddings и косинусную близость. Сейчас просто return []. Это место куда позже встанет реальный RAG.
+buildPrompt({sceneContext, intent, chunks}) — СТАБ. Склеивает системный промпт + контекст + чанки. В MVP в LLM не отправляется — план строится детерминированно.
+processSceneUnderstanding(ctx, intent) определяет цель команды. Внутри вызывает findTargetObject() — простой поиск по совпадению name.includes() в sceneContext.objects.
+parseAiResponse(plan) — СТАБ. Сейчас return plan как есть. В будущем здесь будет разбор JSON-ответа от LLM.
+validateGeneratedActionPlan(plan, sceneUnderstanding) — проверка плана. Зовёт validateActionPlan() из contracts. Для scene-шагов проверяет наличие targetObject. Для UPDATE_PANEL_LAB зовёт validatePanelLabStep().
+Если валидация упала — createFallbackActionPlan(ctx, errors) строит минимальный запасной план. На нормальном пути не вызывается.
+Функции стадии
+runAiServicesPipeline(sceneContext)
+Дирижёр AI-стадий. Запускает все 8 шагов по порядку.
+ИСПОЛЬЗ
+resolveCommandScope(sceneContext)
+Читает clientState.mode → scope (assistant/configurator/panel-lab).
+ИСПОЛЬЗ
+detectIntent(command, scope)
+Перебирает INTENT_DETECTION_RULES, проверяет isIntentAllowedForScope и regex.
+ИСПОЛЬЗ
+retrieve(command)
+СТАБ. Должен делать RAG-поиск. Сейчас return []. Вызывается, но результат не используется.
+СТАБ
+buildPrompt({sceneContext, intent, chunks})
+СТАБ. Склеивает промпт. В LLM не отправляется — только для будущих логов.
+СТАБ
+processSceneUnderstanding(ctx, intent)
+Зовёт findTargetObject(): name.includes(word) в sceneContext.objects.
+ИСПОЛЬЗ
+generateActionPlan(ctx, intent, su)
+Главный генератор плана. Switch по intent.kind — см. стадию 5.
+ИСПОЛЬЗ
+parseAiResponse(plan)
+СТАБ. Passthrough — возвращает план как есть. В будущем разбор JSON от LLM.
+СТАБ
+validateGeneratedActionPlan(plan, su)
+Проверка схемы + наличия targetObject. Для UPDATE_PANEL_LAB → validatePanelLabStep.
+ИСПОЛЬЗ
+createFallbackActionPlan(ctx, errors)
+Запасной план если основной не прошёл валидацию. На нормальном пути не используется.
+ВЕТКА
+buildMetaPipelineResult(intent, meta)
+Если intent=unknown_command или kind=meta — ранний выход из AI с meta-результатом.
+ИСПОЛЬЗ
+5
+Action Plan Generator — три ветки
+ai-services/action-plan-generator.js · knob-plan-builder.js · project-plan-builder.js
+Подробное описание
+generateActionPlan() — большой switch по intent.kind:
+Ветка KNOB (для panel-lab): buildKnobStep({requestId, entry, utterance, panelLab}) обрабатывает команды типа «включи туман», «увеличь яркость на 50%». knobToPatch() читает текущее значение по пути (getPath), считает новое (toggle/set/adjust через extractNumber/extractColor, с clampNum для диапазона), строит sparse patch через setSparse(). Результат оборачивается в шаг type:&apos;UPDATE_PANEL_LAB&apos;.
+Ветка SELECT_PROJECT: buildProjectStep({requestId, utterance, projects}) для команды «выбери проект 2» или «открой kitchen-modern». Через inferProjectSelection() парсит utterance: ищет номер или название в списке доступных проектов. Возвращает шаг SELECT_PROJECT с полем modelKey.
+Ветка SCENE (default — всё остальное): createStepForIntent({…}) — большой switch по ACTION_TYPES: BUBBLE/CLEAR_BUBBLE (нет parameters), MOVE_OBJECT (parameters.translation через inferDirection — right/left/up/down/forward/back с фиксированной дельтой 0.5), CHANGE_OBJECT_COLOR (parameters.color через inferColor — red/blue/green/…), SHOW_BOUNDING_BOXES, MEASURE_MESH_DISTANCE, SELECT_VARIANT, DOWNLOAD_UPDATED_SCENE.
+Каждый шаг получает id через createStepId(requestId, i). Весь план оборачивается в createActionPlan({planId, requestId, steps[], …}) из contracts. Сейчас план всегда содержит один шаг — для будущего assemble_kitchen потребуются multi-step планы, и пайплайн это уже умеет.
+Функции стадии
+generateActionPlan(ctx, intent, su)
+Главный switch по intent.kind: knob | SELECT_PROJECT | scene.
+ИСПОЛЬЗ
+buildKnobStep({requestId, entry, utterance, panelLab})
+Ветка KNOB: создаёт шаг UPDATE_PANEL_LAB с точечным patch.
+ИСПОЛЬЗ
+knobToPatch(entry, utterance, panelLab)
+Вычисляет patch: toggle/set/adjust → sparse patch.
+ИСПОЛЬЗ
+getPath / setSparse
+Чтение по пути и установка точечного значения.
+ИСПОЛЬЗ
+clampNum / extractNumber / extractColor
+Парсинг чисел и цветов из текста с ограничением диапазона.
+ИСПОЛЬЗ
+buildProjectStep({requestId, utterance, projects})
+Ветка SELECT_PROJECT: шаг SELECT_PROJECT с modelKey.
+ИСПОЛЬЗ
+inferProjectSelection / resolveProjects
+Парсинг номера/названия из текста и поиск в списке проектов.
+ИСПОЛЬЗ
+createStepForIntent({…})
+Ветка SCENE: switch по ACTION_TYPES — BUBBLE/MOVE/COLOR/BBOX/MEASURE/VARIANT/DOWNLOAD.
+ИСПОЛЬЗ
+inferDirection / inferColor
+Разбор направления и цвета из команды.
+ИСПОЛЬЗ
+createStepId(requestId, i) / createPlanId(requestId)
+Генераторы id для шагов и плана.
+ИСПОЛЬЗ
+createActionPlan({planId, requestId, steps[]})
+Финальная обёртка плана через @contracts фабрику.
+ИСПОЛЬЗ
+6
+Workflow Engine — роутинг и ACL
+workflow-engine/execute-workflow.js · permissions.js · module-registry.js · bootstrap.js
+Подробное описание
+Чистый маршрутизатор. Сам логики не имеет. executeWorkflow(sceneContext, actionPlan) делает четыре вещи:
+(1) resolveDomainModuleId(sceneContext) — читает clientState.domain. Возвращает &apos;assistant&apos; или &apos;configurator-3d&apos; (дефолт). В будущем — &apos;furniture&apos;, &apos;boats&apos; если они зарегистрированы.
+(2) assertModulePermission(sceneContext, domainId) — ACL. В permissions.js определён массив restrictedDomains: [&apos;configurator-3d&apos;, &apos;panel-lab&apos;]. Для них требуется JWT-роль через requireRole. Если аноним пытается дёрнуть configurator-3d — throw new Error(&apos;not allowed&apos;). Домен assistant ничем не ограничен.
+(3) resolveModule(domainId) — поиск в реестре. Возвращает {execute: fn} — либо executeAssistantPipeline, либо executeConfigurator3dPipeline.
+(4) module.execute(sceneContext, actionPlan) — собственно запуск домена.
+Ветка 403: оркестратор оборачивает executeWorkflow в try/catch. Если ошибка содержит /not allowed/i — возвращает HTTP 403 «Недостаточно прав» вместо 500.
+bootstrapDomainModules() вызывается один раз при старте сервера: registerModule(&apos;assistant&apos;, executeAssistantPipeline) + registerModule(&apos;configurator-3d&apos;, executeConfigurator3dPipeline).
+Функции стадии
+executeWorkflow(sceneContext, actionPlan)
+Дирижёр workflow. resolveDomain → assertPermission → resolveModule → module.execute.
+ИСПОЛЬЗ
+resolveDomainModuleId(sceneContext)
+clientState.domain → id модуля.
+ИСПОЛЬЗ
+assertModulePermission(sceneContext, domainId)
+ACL: restrictedDomains + requireRole. Throw для анонима на configurator-3d.
+ИСПОЛЬЗ
+resolveModule(domainId)
+Map-реестр → {execute: fn}.
+ИСПОЛЬЗ
+bootstrapDomainModules()
+При старте сервера: registerModule для assistant и configurator-3d.
+СЛАБО
+→ HTTP 403 (через isPermissionError)
+Оркестратор ловит throw &apos;not allowed&apos; и отдаёт 403.
+ИСПОЛЬЗ
+Примечание:
+Ветка 403: если assertModulePermission бросает &apos;not allowed&apos; — Orchestrator проверяет /not allowed/i.test(message) и отдаёт 403 минуя Domain. Бэйпасс-линия слева на блок-схеме.
+7
+Domain · configurator-3d pipeline
+apps/server/src/domain-modules/configurator-3d/pipeline.js · domain-modules/assistant/pipeline.js
+Подробное описание
+executeConfigurator3dPipeline(sceneContext, actionPlan) — бригадир. Делит шаги плана на две категории:
+panelLabSteps (type === &apos;UPDATE_PANEL_LAB&apos;) → вызывает applyPanelLabSteps(ctx, panelLabSteps) (см. стадию 8). Возвращает previewUpdate.panelLab.
+sceneSteps (всё остальное) → создаёт рабочий граф через createSceneGraph(sceneContext), затем в цикле для каждого шага зовёт executeStep(sceneGraph, step).
+executeStep — switch по ACTION_TYPES. Лёгкие шаги (BUBBLE, CLEAR_BUBBLE, SELECT_VARIANT, SELECT_PROJECT) формируют previewUpdate сразу. Тяжёлые шаги (MOVE_OBJECT, CHANGE_OBJECT_COLOR, SHOW_BOUNDING_BOXES, MEASURE_MESH_DISTANCE, DOWNLOAD_UPDATED_SCENE) проходят полную цепочку: findSceneObject → validateProductRules → движок.
+В конце собирается previewUpdate (что клиенту нарисовать) и sceneResult через фабрику createSceneResult() из contracts.
+executeAssistantPipeline — однострочный реэкспорт configurator-3d. Это MVP-приём: ACL ассистента пускает любого, но движок тот же. В будущем здесь развести логику для ассистента.
+Функции стадии
+executeConfigurator3dPipeline(ctx, plan)
+Бригадир. Разделяет шаги на panelLab/scene, запускает соответствующие пути.
+ИСПОЛЬЗ
+executeStep(sceneGraph, step)
+Switch по ACTION_TYPES: лёгкие шаги — сразу previewUpdate, тяжёлые — через цепочку движков.
+ИСПОЛЬЗ
+applyPanelLabSteps(ctx, steps)
+Для UPDATE_PANEL_LAB шагов: см. движок panel-lab-engine.
+ИСПОЛЬЗ
+executeAssistantPipeline(ctx, plan)
+Однострочный re-export configurator-3d. MVP-приём для assistant домена.
+СЛАБО
+8
+Configurator-3d · движки (engines)
+apps/server/src/domain-modules/configurator-3d/
+Подробное описание
+Сами «руки» которые меняют сцену. Каждый движок — один файл, одна ответственность.
+scene-graph-manager.js: createSceneGraph(sceneContext) клонирует objects/hierarchy/materials в рабочий граф (нужен снимок «до» для diff). findSceneObject(sceneGraph, objectId) — поиск по id. updateSceneObject(sceneGraph, objectId, updater) — in-place мутация.
+product-rules-engine.js: validateProductRules(step, targetObject) — доменные правила (что можно двигать, какие материалы разрешены). Возвращает массив ошибок.
+transform-engine.js: applyTransformStep(targetObject, step) — применяет step.parameters.translation к targetObject.transform.position. Для MOVE_OBJECT.
+material-engine.js: applyMaterialStep(targetObject, step) — меняет targetObject.material.color. Для CHANGE_OBJECT_COLOR.
+mesh-analysis-engine.js: showBoundingBoxes(sceneGraph) — AABB для каждого объекта. measureMeshDistance(sceneGraph, targetObject) — расстояние nearest-mesh.
+panel-lab-engine.js: applyPanelLabSteps(sceneContext, steps) применяет patch последовательно через deepMerge из panel-lab-schema, нормализует через normalizePanelLabToEmbedded, считает changedPaths(before, after).
+scene-validation-engine.js: validateSceneState(sceneGraph) — финальная проверка валидности (координаты, иерархия).
+scene-diff-generator.js: generateSceneDiff(beforeObjects, afterObjects) — массив изменений вида [{objectId, field, before, after}].
+gltf-glb-exporter.js: createExportReference(sceneId, requestId) — URL для скачивания .glb. Реально нужен только DOWNLOAD_UPDATED_SCENE.
+Функции стадии
+createSceneGraph(sceneContext)
+Клонирует objects/hierarchy/materials в рабочий граф (снимок «до» для diff).
+ИСПОЛЬЗ
+findSceneObject(sceneGraph, objectId)
+Поиск объекта по id. Возвращает null если не найден.
+ИСПОЛЬЗ
+updateSceneObject(sceneGraph, objectId, updater)
+In-place мутация через updater-функцию.
+ИСПОЛЬЗ
+validateProductRules(step, targetObject)
+Доменные правила: что можно двигать, какие материалы разрешены.
+ИСПОЛЬЗ
+applyTransformStep(targetObject, step)
+Применяет translation к position. Для MOVE_OBJECT.
+ИСПОЛЬЗ
+applyMaterialStep(targetObject, step)
+Меняет material.color. Для CHANGE_OBJECT_COLOR.
+ИСПОЛЬЗ
+showBoundingBoxes(sceneGraph)
+AABB для каждого объекта. Для SHOW_BOUNDING_BOXES.
+ИСПОЛЬЗ
+measureMeshDistance(sceneGraph, target)
+Расстояние nearest-mesh. Для MEASURE_MESH_DISTANCE.
+ИСПОЛЬЗ
+applyPanelLabSteps(ctx, steps)
+deepMerge всех patch → итоговый panelLab + changedPaths.
+ИСПОЛЬЗ
+resolvePanelLab / normalizePanelLab / changedPaths
+Хелперы panel-lab-engine для merge и diff настроек.
+ИСПОЛЬЗ
+validateSceneState(sceneGraph)
+Финальная проверка: координаты не NaN, нет битой иерархии.
+ИСПОЛЬЗ
+generateSceneDiff(before, after)
+Diff объектов до/после. Пустой для шагов которые не меняют объекты.
+СЛАБО
+createExportReference(sceneId, requestId)
+URL .glb для скачивания. Нужен только DOWNLOAD_UPDATED_SCENE.
+СЛАБО
+9
+Output Builder + Send
+apps/server/src/core/output-builder.js · infrastructure/lib/send-json.js · @contracts
+Подробное описание
+После домена возвращаемся в оркестратор. Он зовёт buildAcceptedCommandPayload({clientRequest, storage, sceneContext, aiServices, sceneModules}) — упаковщик финального ответа.
+Внутри: createClientResponse() из @contracts создаёт объект {requestId, sessionId, sceneId, status:&apos;accepted&apos;, explanation, sceneResult:{previewUpdate, sceneDiff, measurements}}.
+validateClientResponse(payload) прогоняет через zod-валидатор — последняя проверка перед отправкой.
+Для META/UNKNOWN команд используется альтернативный buildMetaCommandPayload — ответ без sceneResult, только message и data.commands[] (список доступных команд для справки).
+sendJson(res, 202, payload) в infrastructure/lib/send-json.js — записывает HTTP-статус 202 (Accepted, не 200) и JSON-тело. Статус 202 семантически правильный: команда принята, но клиент сам её применит к сцене (мы не возвращаем готовое изображение).
+Функции стадии
+buildAcceptedCommandPayload({…})
+Упаковщик успешного ответа (202): createClientResponse + sceneResult.
+ИСПОЛЬЗ
+createClientResponse({…})
+@contracts фабрика: {requestId, sessionId, status, sceneResult}.
+ИСПОЛЬЗ
+validateClientResponse(payload)
+zod-валидатор итогового ответа.
+ИСПОЛЬЗ
+sendJson(res, 202, payload)
+Запись HTTP-статуса и JSON-тела. Клиент получает это в postCommand().
+ИСПОЛЬЗ
+10
+CLIENT — применяет previewUpdate
+AppShell.jsx · ConfiguratorCommandBar.jsx · aiSceneBridge.js · R3F-сцена
+Подробное описание
+handleSubmit на клиенте получает JSON-ответ от postCommand() и применяет previewUpdate к React/R3F-сцене. Это «замыкание круга» — превращение серверных данных в визуальные изменения.
+previewUpdate — плоский объект с несколькими опциональными полями. Клиент обрабатывает каждое поле независимо:
+assistantOverlay: {redCircle: true|false} → рисует/убирает красный круг поверх Canvas (BUBBLE/CLEAR_BUBBLE — «hello world» демонстрация ассистента).
+objects[] → синхронизирует position/material 3D-объектов в R3F-сцене. Через shouldSyncServerObjects() решается: применять или игнорировать (если клиент сам ведёт состояние). Для MOVE_OBJECT и CHANGE_OBJECT_COLOR.
+panelLab → применяет настройки света/тумана/теней/HDRI/FOV через R3F + drei-компоненты. Для всех knob-команд.
+selectionUpdate: {groupId: variantIndex} → переключает видимость варианта в группе. Для SELECT_VARIANT.
+modelKeyUpdate → меняет URL/ключ загружаемой модели → клиент перезагружает GLTF. Для SELECT_PROJECT.
+boundingBoxes → массив рамок для wireframe-отрисовки. measurements[] → массив {from, to, distance} для UI-оверлея.
+exportRequested: true → клиент инициирует скачивание .glb. Для DOWNLOAD_UPDATED_SCENE.
+Функции стадии
+handleSubmit() ← ответ сервера
+Получает JSON и применяет previewUpdate к React/R3F-сцене.
+ИСПОЛЬЗ
+shouldSyncServerObjects()
+Решает применять objects[] из ответа или игнорировать.
+ИСПОЛЬЗ
+previewUpdate.assistantOverlay
+Красный круг поверх Canvas. BUBBLE/CLEAR_BUBBLE.
+ИСПОЛЬЗ
+previewUpdate.objects[]
+Синхронизация position/material. MOVE/COLOR.
+ИСПОЛЬЗ
+previewUpdate.panelLab
+fog/light/shadow/hdri/fov через R3F+drei. Все knob.
+ИСПОЛЬЗ
+previewUpdate.selectionUpdate
+Переключение варианта в группе. SELECT_VARIANT.
+ИСПОЛЬЗ
+previewUpdate.modelKeyUpdate
+Перезагрузка GLTF. SELECT_PROJECT.
+ИСПОЛЬЗ
+previewUpdate.boundingBoxes / measurements
+Рамки и дистанции в UI. SHOW_BBOX / MEASURE.
+ИСПОЛЬЗ
+previewUpdate.exportRequested
+Инициирует скачивание .glb. DOWNLOAD_UPDATED_SCENE.
+СЛАБО
+ЧАСТЬ III — Принципы архитектуры
+Главные принципы, на которых построен пайплайн AIproject. Они объясняют не «как» (это видно из стадий), а «почему именно так».
+· Контекст вместо состояния
+Сервер не помнит сцену между запросами — клиент присылает её каждый раз в clientState. Это упрощает масштабирование и позволяет одной команде работать с разными сценами.
+· Детерминированный AI
+Никакого LLM в основном пути. План строится regex-ом и switch-ем. Три стаба (retrieve, buildPrompt, parseAiResponse) — места под будущий LLM. Сейчас всё предсказуемо и тестируемо.
+· Чистое разделение слоёв
+AI понимает (что хотят), Workflow проверяет (можно ли), Domain делает (как именно), Output отдаёт (что получилось). Каждый слой имеет одну ответственность.
+· Multi-step готов
+Пайплайн умеет N шагов, но генератор пока строит планы по одному шагу. Для assemble_kitchen это первое что нужно использовать — multi-step ActionPlan с несколькими PLACE_MODULE + ADD_LIGHT.
+Сводная картина — где что лежит
+Где
+Логика
+Состояние
+Стадии 0, 10 (клиент)
+UI, ввод, рендер
+React + R3F state
+Стадии 1–3 (вход)
+Транспорт, контекст
+Stateless (контекст из БД/файлов)
+Стадии 4–5 (AI)
+Распознавание + план
+Stateless (regex + switch)
+Стадия 6 (workflow)
+Роутинг + ACL
+Stateless (Map-реестр)
+Стадии 7–8 (домен)
+Мутация сцены
+Чистая функция (clone → mutate → diff)
+Стадия 9 (выход)
+Упаковка ответа
+Stateless
