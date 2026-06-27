@@ -35,9 +35,11 @@ export function useCommandBar({ onSubmit, disabled = false, keyboardBlocked = fa
   const isListeningRef = useRef(isListening);
   const isSubmittingRef = useRef(isSubmitting);
   const showCommandFieldRef = useRef(false);
+  const commandRef = useRef(command);
   const handleRoundButtonRef = useRef(/** @type {(() => void) | null} */ (null));
   isListeningRef.current = isListening;
   isSubmittingRef.current = isSubmitting;
+  commandRef.current = command;
 
   const showCommandField =
     !canUseSpeech ||
@@ -171,6 +173,23 @@ export function useCommandBar({ onSubmit, disabled = false, keyboardBlocked = fa
         return;
       }
 
+      if (event.key === 'Escape') {
+        if (!canUseSpeech || isSubmittingRef.current || !showCommandFieldRef.current) {
+          return;
+        }
+        if (commandRef.current.trim()) {
+          return;
+        }
+
+        if (isListeningRef.current) {
+          stopListening();
+        }
+        setCommandBarExpanded(false);
+        input?.blur();
+        event.preventDefault();
+        return;
+      }
+
       if (event.key !== 'Enter') {
         return;
       }
@@ -185,7 +204,7 @@ export function useCommandBar({ onSubmit, disabled = false, keyboardBlocked = fa
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [canUseSpeech, disabled, keyboardBlocked]);
+  }, [canUseSpeech, disabled, keyboardBlocked, stopListening]);
 
   return {
     command,

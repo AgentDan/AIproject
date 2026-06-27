@@ -84,7 +84,7 @@ export async function orchestrateCommand(clientRequest) {
   const { sceneContext, validationErrors: sceneContextErrors } =
     await buildSceneContext(clientRequest);
 
-    console.log('sceneContext', sceneContext);
+    console.log('sceneContext', JSON.stringify(sceneContext));
 
 
   if (sceneContextErrors.length > 0) {

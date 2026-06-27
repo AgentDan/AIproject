@@ -42,17 +42,19 @@ export default function ResultViewer({ serverNotice, serverNoticeRef }) {
   return (
     <div
       ref={serverNoticeRef}
-      className={`fixed left-1/2 top-[24%] z-50 flex w-[min(88vw,640px)] -translate-x-1/2 flex-col rounded-[2rem] border border-white/15 bg-white/15 px-8 py-6 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-2xl ${
-        isHelp ? 'max-h-[min(78vh,560px)]' : ''
+      className={`fixed left-1/2 z-50 flex w-[min(88vw,640px)] -translate-x-1/2 flex-col rounded-[2rem] border border-white/15 bg-white/15 px-8 py-6 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-2xl ${
+        isHelp
+          ? 'top-20 bottom-28 max-h-[calc(100dvh-12rem)] overflow-hidden'
+          : 'top-[24%]'
       }`}
     >
-      <div className={`flex items-start gap-4 ${isHelp ? 'min-h-0 flex-1' : ''}`}>
+      <div className={`flex min-h-0 items-start gap-4 ${isHelp ? 'h-full flex-1 overflow-hidden' : ''}`}>
         <span
           className={`mt-1.5 shrink-0 h-3.5 w-3.5 rounded-full shadow-lg ${
             serverNotice.type === 'error' ? 'bg-red-300' : 'bg-emerald-300'
           }`}
         />
-        <div className={`flex min-h-0 flex-1 flex-col ${isHelp ? 'gap-0' : ''}`}>
+        <div className={`flex min-h-0 flex-1 flex-col ${isHelp ? 'h-full gap-0 overflow-hidden' : ''}`}>
           <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.35em] text-white/45">
             AI Response
           </p>
@@ -60,7 +62,7 @@ export default function ResultViewer({ serverNotice, serverNoticeRef }) {
             {serverNotice.message}
           </p>
           {isHelp ? (
-            <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 pt-1">
+            <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 pt-1 [-webkit-overflow-scrolling:touch]">
               <HelpIntentList intents={serverNotice.helpIntents} />
             </div>
           ) : null}
