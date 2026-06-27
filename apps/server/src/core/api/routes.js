@@ -127,6 +127,7 @@ export function mountRoutes(app) {
     '/api/commands',
     authenticate({ required: false, rejectInvalidToken: true }),
     wrapAsync(async (req, res) => {
+      console.log('handlePostCommands', req.body);
       await handlePostCommands(req, res);
     })
   );
