@@ -1,6 +1,7 @@
 /**
  * HTTP-клиент к Platform API (клиент не знает про AI / Scene Modules — только контракт запроса).
  */
+import { useAuthStore } from '../features/auth/store/authStore.js';
 
 export function resolveApiUrl(path) {
   if (/^https?:\/\//i.test(path)) {
@@ -34,12 +35,11 @@ export function getApiBaseUrl() {
  *   extraHeaders?: Record<string, string>
  * }} body
  */
-export async function postCommand({ command, inputType, clientState, extraHeaders = {} }) {
-  const apiBaseUrl = getApiBaseUrl();
+async function fetchCommand(apiBaseUrl, body, extraHeaders = {}) {
   const apiResponse = await fetch(`${apiBaseUrl}/api/commands`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...extraHeaders },
-    body: JSON.stringify({ command, inputType, clientState })
+    body: JSON.stringify(body)
   });
 
   let payload;
@@ -52,4 +52,23 @@ export async function postCommand({ command, inputType, clientState, extraHeader
   }
 
   return { apiResponse, payload };
+}
+
+export async function postCommand({ command, inputType, clientState, extraHeaders = {} }) {
+  const apiBaseUrl = getApiBaseUrl();
+  const body = { command, inputType, clientState };
+  let result = await fetchCommand(apiBaseUrl, body, extraHeaders);
+
+  const staleToken =
+    result.apiResponse.status === 401 &&
+    typeof result.payload?.message === 'string' &&
+    /invalid or expired token/i.test(result.payload.message);
+
+  if (staleToken && extraHeaders.Authorization) {
+    useAuthStore.getState().logout();
+    const { Authorization: _drop, ...withoutAuth } = extraHeaders;
+    result = await fetchCommand(apiBaseUrl, body, withoutAuth);
+  }
+
+  return result;
 }
