@@ -10,3 +10,6 @@ apps/server/src/knowledge-base/data/index/*
 !.env.example
 .DS_Store
 .claude/
+
+# Локальная копия legacy MVP (не коммитить nested .git)
+mvp3dcursor/

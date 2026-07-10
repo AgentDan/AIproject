@@ -6,12 +6,22 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "test": "node --test src/workflow-engine/execute-workflow.test.js src/ai-services/knob-plan-builder.test.js src/ai-services/project-plan-builder.test.js src/ai-services/intent-detector.test.js src/domain-modules/configurator-3d/pipeline.test.js",
     "kb:index": "node src/knowledge-base/indexer.js"
   },
   "dependencies": {
     "@ai-product-scene-platform/ai": "0.1.0",
     "@ai-product-scene-platform/contracts": "0.1.0",
+    "@ai-product-scene-platform/panel-lab-schema": "0.1.0",
+    "@aws-sdk/client-s3": "^3.700.0",
+    "@aws-sdk/s3-request-presigner": "^3.700.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
     "dotenv": "^16.6.1",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.2.3",
+    "multer": "^2.1.1"
   }
 }

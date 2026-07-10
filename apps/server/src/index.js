@@ -1,4 +1,4 @@
-import './config/load-env.js';
+import './infrastructure/config/load-env.js';
 
 import { startServer } from './server.js';
 

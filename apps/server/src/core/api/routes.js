@@ -3,30 +3,25 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import {
   CLIENT_RESPONSE_STATUS,
-  CLIENT_RESPONSE_TYPE,
   COMMAND_INPUT_TYPES,
   createClientRequest,
   createClientResponse,
   validateClientRequest
 } from '@ai-product-scene-platform/contracts';
-import { sendJson } from '../../lib/send-json.js';
-import {
-  getStorageStatus,
-  recordCommandRequest
-} from '../../storage/local-storage.js';
-import { processRequest } from '../orchestrator.js';
-import { buildSceneContext } from '../scene-context-builder.js';
-import { runAiServicesPipeline } from '../../ai-services/pipeline.js';
-import { executeSceneModulesPipeline } from '../../scene-modules/pipeline.js';
-import { buildAcceptedCommandPayload } from '../output-builder.js';
-import {
-  isProduction,
-  runtimeLabel
-} from '../../config/runtime.js';
+import { sendJson } from '../../infrastructure/lib/send-json.js';
+import { getStorageStatus } from '../../infrastructure/storage/local-storage.js';
+import { orchestrateCommand } from '../orchestrator.js';
+import { isProduction, runtimeLabel } from '../../infrastructure/config/runtime.js';
+import { authRouter } from '../../infrastructure/auth/auth-routes.js';
+import { adminRouter } from '../../infrastructure/admin/admin-routes.js';
+import { modelsRouter } from '../../infrastructure/models/models-routes.js';
+import { s3Router } from '../../infrastructure/cloud-r2/s3-routes.js';
+import { authenticate } from '../../infrastructure/auth/auth-middleware.js';
 import {
   wrapAsync,
   notFoundApiHandler,
-  resolveClientDistPath
+  resolveClientDistPath,
+  authRateLimit
 } from './middleware.js';
 
 const __dirnameRoutes = path.dirname(fileURLToPath(import.meta.url));
@@ -37,8 +32,9 @@ function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** POST /api/commands */
+/** POST /api/commands — только HTTP; flow в orchestrator. */
 async function handlePostCommands(req, res) {
+
   const body =
     req.body !== undefined && req.body !== null && typeof req.body === 'object'
       ? req.body
@@ -52,6 +48,14 @@ async function handlePostCommands(req, res) {
     command: body.command,
     clientState: body.clientState || {}
   });
+
+
+  if (req.user) {
+    clientRequest.clientState = {
+      ...clientRequest.clientState,
+      auth: { userId: req.user.id, role: req.user.role }
+    };
+  }
 
   const validationErrors = validateClientRequest(clientRequest);
 
@@ -69,120 +73,21 @@ async function handlePostCommands(req, res) {
     return;
   }
 
-  let storage;
-
-  try {
-    storage = await recordCommandRequest(clientRequest);
-  } catch (error) {
-    sendJson(res, 500, {
-      ...createClientResponse({
-        requestId: clientRequest.requestId,
-        sessionId: clientRequest.sessionId,
-        sceneId: clientRequest.sceneId,
-        status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'Не удалось сохранить команду.',
-        errors: [error instanceof Error ? error.message : String(error)]
-      })
-    });
-    return;
-  }
-
-  const earlyOutcome = processRequest(clientRequest, storage);
-
-  if (earlyOutcome.completed) {
-    sendJson(res, earlyOutcome.statusCode, earlyOutcome.payload);
-    return;
-  }
-
-  const { sceneContext, validationErrors: sceneContextErrors } =
-    await buildSceneContext(clientRequest);
-
-  if (sceneContextErrors.length > 0) {
-    sendJson(res, 500, {
-      ...createClientResponse({
-        requestId: clientRequest.requestId,
-        sessionId: clientRequest.sessionId,
-        sceneId: clientRequest.sceneId,
-        status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'Ошибка валидации контекста сцены.',
-        errors: sceneContextErrors
-      }),
-      clientRequest,
-      storage
-    });
-    return;
-  }
-
-  const aiServices = await runAiServicesPipeline(sceneContext);
-
-  if (!aiServices.validation.valid) {
-    sendJson(res, 500, {
-      ...createClientResponse({
-        requestId: clientRequest.requestId,
-        sessionId: clientRequest.sessionId,
-        sceneId: clientRequest.sceneId,
-        status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'Ошибка валидации конвейера AI-сервисов.',
-        errors: aiServices.validation.errors
-      }),
-      clientRequest,
-      storage,
-      sceneContext,
-      aiServices
-    });
-    return;
-  }
-
-  const sceneModules = await executeSceneModulesPipeline(
-    sceneContext,
-    aiServices.actionPlan
-  );
-
-  if (
-    sceneModules.validationErrors.length > 0 ||
-    !sceneModules.sceneResult.validation.valid
-  ) {
-    sendJson(res, 500, {
-      ...createClientResponse({
-        requestId: clientRequest.requestId,
-        sessionId: clientRequest.sessionId,
-        sceneId: clientRequest.sceneId,
-        status: CLIENT_RESPONSE_STATUS.ERROR,
-        message: 'Ошибка валидации конвейера модулей сцены.',
-        sceneResult: sceneModules.sceneResult,
-        errors: [
-          ...sceneModules.validationErrors,
-          ...sceneModules.sceneResult.validation.errors
-        ]
-      }),
-      clientRequest,
-      storage,
-      sceneContext,
-      aiServices,
-      sceneModules
-    });
-    return;
-  }
-
-  sendJson(
-    res,
-    202,
-    buildAcceptedCommandPayload({
-      clientRequest,
-      storage,
-      sceneContext,
-      aiServices,
-      sceneModules
-    })
-  );
+  const { statusCode, payload } = await orchestrateCommand(clientRequest);
+  sendJson(res, statusCode, payload);
 }
 
 /**
- * Регистрирует HTTP-маршруты и статику (API Layer).
+ * API layer (схема): маршруты, CORS, JSON — без бизнес-flow.
  * @param {import('express').Express} app
  */
 export function mountRoutes(app) {
   app.use('/gltf', express.static(gltfDir));
+
+  app.use('/api/auth', authRateLimit, authRouter);
+  app.use('/api/admin', adminRouter);
+  app.use('/api/models', modelsRouter);
+  app.use('/api/s3', s3Router);
 
   app.get('/health', (req, res) => {
     sendJson(res, 200, {
@@ -200,7 +105,13 @@ export function mountRoutes(app) {
         'GET /health',
         'GET /api',
         'GET /api/storage/status',
-        'POST /api/commands'
+        'POST /api/commands',
+        'POST /api/auth/register',
+        'POST /api/auth/login',
+        'GET /api/models',
+        'GET /api/admin/users',
+        'POST /api/admin/lab/from-s3',
+        'GET /api/s3/objects'
       ]
     });
   });
@@ -214,7 +125,11 @@ export function mountRoutes(app) {
 
   app.post(
     '/api/commands',
+    authenticate({ required: false, rejectInvalidToken: false }),
     wrapAsync(async (req, res) => {
+
+      // console.log('req.body', req.body);
+
       await handlePostCommands(req, res);
     })
   );

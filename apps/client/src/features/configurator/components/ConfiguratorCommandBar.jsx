@@ -1,0 +1,128 @@
+import { useCallback, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { postCommand } from '../../../api/client.js';
+import { getAuthHeaders } from '../../../api/authFetch.js';
+import { useDismissServerNotice } from '../../../hooks/useDismissServerNotice.js';
+import { useSceneStore } from '../../../shared/scene/sceneStore.js';
+import { useConfiguratorStore } from '../store/configuratorStore.js';
+import { useAiSceneStore } from '../store/aiSceneStore.js';
+import { useViewerSettingsStore } from '../../../shared/scene/viewerSettingsStore.js';
+import CommandBar from '../../../widgets/CommandBar.jsx';
+import ResultViewer from '../../../widgets/ResultViewer.jsx';
+import { buildServerNoticeFromPayload } from '../../../shared/commandResponseNotice.js';
+import {
+  resolveConfiguratorCommandMode,
+  shouldSyncServerObjects
+} from '../domain/aiSceneBridge.js';
+
+export function ConfiguratorCommandBar({ modelKey }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [serverNotice, setServerNotice] = useState(null);
+  const serverNoticeRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+
+  useDismissServerNotice(serverNotice, setServerNotice, serverNoticeRef);
+
+  const selection = useConfiguratorStore((s) => s.selection);
+  const projects = useConfiguratorStore((s) => s.projects);
+  const panelLab = useViewerSettingsStore((s) => s.panelLab);
+  const sceneData = useSceneStore((s) => s.sceneData);
+
+  const handleSubmit = useCallback(
+    async ({ command, inputType }) => {
+      if (!command) {
+        setServerNotice({
+          type: 'error',
+          title: 'No command detected',
+          message:
+            'Use the round button or Enter: when empty, speak; when there is text, send.'
+        });
+        return false;
+      }
+
+      try {
+        const clientState = useAiSceneStore.getState().buildClientState({
+          modelKey,
+          selection,
+          panelLab,
+          sceneData,
+          projects,
+          mode: resolveConfiguratorCommandMode(location.search)
+        });
+
+        const { apiResponse, payload } = await postCommand({
+          command,
+          inputType,
+          clientState,
+          extraHeaders: getAuthHeaders()
+        });
+
+        if (!apiResponse.ok) {
+          throw new Error(payload.message || 'Command failed');
+        }
+
+        const previewUpdate = payload?.sceneResult?.previewUpdate;
+        if (shouldSyncServerObjects(previewUpdate)) {
+          useAiSceneStore.getState().queueServerObjects(previewUpdate.objects);
+        }
+
+        const panelLabUpdate = previewUpdate?.panelLab;
+        if (panelLabUpdate) {
+          useViewerSettingsStore.getState().hydrateFromPanelLab(panelLabUpdate);
+        }
+
+        const selectionUpdate = previewUpdate?.selectionUpdate;
+        if (selectionUpdate && typeof selectionUpdate === 'object') {
+          useConfiguratorStore.getState().setSelection(selectionUpdate);
+        }
+
+        const modelKeyUpdate = previewUpdate?.modelKeyUpdate;
+        if (typeof modelKeyUpdate === 'string' && modelKeyUpdate.trim()) {
+          const next = new URLSearchParams(location.search);
+          next.delete('labKey');
+          next.set('modelKey', modelKeyUpdate.trim());
+          navigate(
+            { pathname: location.pathname, search: `?${next.toString()}` },
+            { replace: false }
+          );
+        }
+
+        if (payload?.responseType === 'help' || payload?.data?.kind === 'unknown') {
+          setServerNotice(buildServerNoticeFromPayload(payload));
+          return true;
+        }
+
+        setServerNotice({
+          type: 'success',
+          message: payload.explanation || payload.message || 'Команда применена к 3D-сцене.'
+        });
+        return true;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setServerNotice({
+          type: 'error',
+          title: 'Command error',
+          message
+        });
+        return false;
+      }
+    },
+    [modelKey, panelLab, sceneData, selection, projects, location.pathname, location.search, navigate]
+  );
+
+  if (!modelKey) {
+    return null;
+  }
+
+  return (
+    <>
+      <ResultViewer serverNotice={serverNotice} serverNoticeRef={serverNoticeRef} />
+      <CommandBar
+        inputId="configurator-command-input"
+        placeholder="Type command"
+        keyboardBlocked={Boolean(serverNotice)}
+        onSubmit={handleSubmit}
+      />
+    </>
+  );
+}

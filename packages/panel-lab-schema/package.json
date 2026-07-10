@@ -1,0 +1,11 @@
+{
+  "name": "@ai-product-scene-platform/panel-lab-schema",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Panel Lab defaults and normalization for glTF extras.panelLab (from mvp3dcursor).",
+  "main": "src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs"
+  }
+}

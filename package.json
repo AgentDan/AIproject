@@ -8,7 +8,8 @@
     "apps/mobile",
     "apps/server",
     "packages/ai",
-    "packages/contracts"
+    "packages/contracts",
+    "packages/panel-lab-schema"
   ],
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev --workspace apps/server\" \"npm run dev --workspace apps/client\"",
@@ -16,8 +17,8 @@
     "dev:client": "npm run dev --workspace apps/client",
     "dev:mobile": "npm run start --workspace apps/mobile",
     "build": "npm run build --workspace apps/client",
-    "build:ai": "npm run build --workspace @ai-product-scene-platform/ai",
-    "build:deploy": "npm run build:ai && npm run build",
+    "build:deploy": "npm run kb:index && npm run build",
+    "start": "npm run start --workspace apps/server",
     "kb:index": "npm run kb:index --workspace apps/server"
   },
   "devDependencies": {

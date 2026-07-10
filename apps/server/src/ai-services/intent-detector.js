@@ -1,7 +1,14 @@
-import { ACTION_TYPES, INTENT_DETECTION_RULES } from '@ai-product-scene-platform/ai';
+import {
+  INTENT_DETECTION_RULES,
+  getIntentEntry,
+  isIntentAllowedForScope
+} from '@ai-product-scene-platform/ai';
 
-export function detectIntent(command = '') {
+export function detectIntent(command = '', scope) {
   for (const { intent, patterns } of INTENT_DETECTION_RULES) {
+    const entry = getIntentEntry(intent);
+    if (!isIntentAllowedForScope(entry, scope)) continue;
+
     if (patterns.some((pattern) => pattern.test(command))) {
       return {
         intent,
@@ -12,8 +19,8 @@ export function detectIntent(command = '') {
   }
 
   return {
-    intent: ACTION_TYPES.MOVE_OBJECT,
-    confidence: 0.42,
-    source: 'fallback-default'
+    intent: 'unknown_command',
+    confidence: 0.0,
+    source: 'fallback-unknown'
   };
 }

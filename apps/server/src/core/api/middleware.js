@@ -1,11 +1,38 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { CLIENT_RESPONSE_STATUS } from '@ai-product-scene-platform/contracts';
-import { isProduction, corsAllowOrigin } from '../../config/runtime.js';
-import { sendJson } from '../../lib/send-json.js';
+import { corsAllowOrigin } from '../../infrastructure/config/runtime.js';
+import { sendJson } from '../../infrastructure/lib/send-json.js';
+
+export { authenticate, requireRole } from '../../infrastructure/auth/auth-middleware.js';
 
 const __dirnameMw = path.dirname(fileURLToPath(import.meta.url));
+
+function readPositiveInt(raw, fallback) {
+  const n = Number.parseInt(String(raw ?? ''), 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/** Лимит на /api/auth (register, login). */
+export const authRateLimit = rateLimit({
+  windowMs: readPositiveInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+  max: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX, 30),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many auth requests. Try again later.' }
+});
+
+/** Общий лимит на /api/*. */
+export const apiRateLimit = rateLimit({
+  windowMs: readPositiveInt(process.env.API_RATE_LIMIT_WINDOW_MS, 60 * 1000),
+  max: readPositiveInt(process.env.API_RATE_LIMIT_MAX, 200),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests. Try again later.' }
+});
 
 export function wrapAsync(fn) {
   return function asyncRoute(req, res, next) {
@@ -13,22 +40,14 @@ export function wrapAsync(fn) {
   };
 }
 
-export function corsMiddleware(req, res, next) {
-  const allowOrigin = isProduction ? corsAllowOrigin() : '*';
-  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-  );
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization'
-  );
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-}
+export const corsMiddleware = cors((req, callback) => {
+  const configured = corsAllowOrigin();
+  callback(null, {
+    origin: configured === '*' ? '*' : configured,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  });
+});
 
 /** Абсолютный путь к `apps/client/dist` или `CLIENT_DIST_PATH`. */
 export function resolveClientDistPath() {

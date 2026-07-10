@@ -1,48 +1,25 @@
-# Дерево проекта `ai-product-scene-platform`
-const helloWorld="false";
-Снимок **без** `node_modules/`, `.git/`, `dist/`, `build/`.  
-Подробная архитектура: [docs/architecture.md](docs/architecture.md).
+# Дерево `apps/server/src` (Universal AI Platform v2)
 
-Локально создаются: `apps/server/data/{sessions,scenes,...}`; индекс RAG: `apps/server/src/knowledge-base/data/index/` (см. `.gitignore`).
+Схема: [docs/universal_ai_platform_v2.pdf](../docs/universal_ai_platform_v2.pdf)
 
 ```text
-.
-├── .env.example
-├── .gitignore
-├── package.json
-├── package-lock.json
-├── README.md
-├── three.md
-│
-├── docs/
-│   ├── architecture.md
-│   ├── roadmap.md
-│   └── .keep.md
-│
-├── apps/
-│   ├── client/
-│   │   ├── public/
-│   │   ├── src/
-│   │   │   ├── api/client.js
-│   │   │   ├── components/
-│   │   │   │   ├── CommandInput.jsx
-│   │   │   │   ├── Preview3D.jsx
-│   │   │   │   └── ResultViewer.jsx
-│   │   │   ├── App.jsx
-│   │   │   ├── main.jsx
-│   │   │   └── styles.css
-│   │   ├── index.html
-│   │   ├── vite.config.js
-│   │   └── package.json
-│   ├── mobile/ …
-│   └── server/
-│       ├── data/  gltf/
-│       ├── src/core/api/ (middleware.js, routes.js)
-│       ├── src/knowledge-base/ …
-│       ├── src/ai-services/ …
-│       ├── src/scene-modules/ …
-│       ├── src/storage/, config/, services/, lib/
-│       └── app.js, server.js, index.js
-│
-└── packages/contracts, packages/ai …
+src/
+├── core/                      # Platform core
+│   ├── api/                   # API layer (routes, middleware, CORS)
+│   ├── orchestrator.js        # main flow
+│   ├── scene-context-builder.js
+│   └── output-builder.js
+├── ai-services/               # AI runtime
+├── knowledge-base/
+├── workflow-engine/           # registerModule · permissions · executeWorkflow
+├── domain-modules/
+│   ├── configurator-3d/       # реализован
+│   ├── food-delivery/         # plug-in stub
+│   ├── boats/ furniture/ warehouse/
+├── infrastructure/            # Universal infrastructure
+│   ├── storage/ config/ lib/ services/
+│   └── index.js               # auth · event-bus · jobs · realtime · analytics (stubs)
+├── app.js  server.js  index.js
 ```
+
+Пакеты: `packages/contracts`, `packages/ai`.

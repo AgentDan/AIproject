@@ -4,19 +4,10 @@
   "private": true,
   "type": "module",
   "description": "Intent registry and AI-adjacent static knowledge for the platform.",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "default": "./src/index.js"
     }
-  },
-  "scripts": {
-    "build": "tsc -p .",
-    "prepare": "npm run build"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.3"
   }
 }

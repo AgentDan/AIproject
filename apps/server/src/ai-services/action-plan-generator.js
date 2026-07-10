@@ -3,6 +3,18 @@ import {
   createActionPlan,
   createActionStep
 } from '@ai-product-scene-platform/contracts';
+import { getIntentEntry, isIntentAllowedForScope } from '@ai-product-scene-platform/ai';
+import { cloneDefaultPanelLab } from '@ai-product-scene-platform/panel-lab-schema';
+import { buildKnobStep } from './knob-plan-builder.js';
+import { buildProjectStep } from './project-plan-builder.js';
+
+function resolveProjects(sceneContext) {
+  return (
+    sceneContext.commandContext?.clientState?.projects ||
+    sceneContext.metadata?.configurator?.projects ||
+    []
+  );
+}
 
 function createPlanId(requestId) {
   return `plan-${requestId}`;
@@ -10,6 +22,14 @@ function createPlanId(requestId) {
 
 function createStepId(requestId, index) {
   return `step-${requestId}-${index}`;
+}
+
+function resolvePanelLab(sceneContext) {
+  return (
+    sceneContext.panelLab ||
+    sceneContext.metadata?.configurator?.panelLab ||
+    cloneDefaultPanelLab()
+  );
 }
 
 function inferDirection(command) {
@@ -85,6 +105,39 @@ function createStepForIntent({ requestId, intent, command, targetObject }) {
     });
   }
 
+  if (intent === ACTION_TYPES.SELECT_VARIANT) {
+    const nums = command.match(/\d+/g)?.map(Number) ?? [];
+    const groupId = nums[0] ?? 0;
+    const variantIndex = nums[1] ?? 0;
+    return createActionStep({
+      stepId: createStepId(requestId, 1),
+      type: ACTION_TYPES.SELECT_VARIANT,
+      target: { objectId: `group-${groupId}` },
+      parameters: { groupId, variantIndex },
+      reason: `Select variant ${variantIndex} in group ${groupId}.`,
+    });
+  }
+
+  if (intent === ACTION_TYPES.BUBBLE) {
+    return createActionStep({
+      stepId: createStepId(requestId, 1),
+      type: ACTION_TYPES.BUBBLE,
+      target: { objectId: 'assistant-overlay' },
+      parameters: { redCircle: true },
+      reason: 'Assistant overlay: show centered red circle.'
+    });
+  }
+
+  if (intent === ACTION_TYPES.CLEAR_BUBBLE) {
+    return createActionStep({
+      stepId: createStepId(requestId, 1),
+      type: ACTION_TYPES.CLEAR_BUBBLE,
+      target: { objectId: 'assistant-overlay' },
+      parameters: { redCircle: false },
+      reason: 'Assistant overlay: remove centered red circle.'
+    });
+  }
+
   return createActionStep({
     stepId: createStepId(requestId, 1),
     type: ACTION_TYPES.DOWNLOAD_UPDATED_SCENE,
@@ -99,12 +152,33 @@ function createStepForIntent({ requestId, intent, command, targetObject }) {
 export function generateActionPlan(sceneContext, intentResult, sceneUnderstanding) {
   const command = sceneContext.commandContext.command || '';
   const requestId = sceneContext.commandContext.requestId;
-  const step = createStepForIntent({
-    requestId,
-    intent: intentResult.intent,
-    command,
-    targetObject: sceneUnderstanding.targetObject
-  });
+  const entry = getIntentEntry(intentResult.intent);
+  const scope = sceneContext.commandContext?.clientState?.mode;
+
+  if (entry && !isIntentAllowedForScope(entry, scope)) {
+    return null;
+  }
+
+  let step;
+  if (entry?.kind === 'knob') {
+    const panelLab = resolvePanelLab(sceneContext);
+    step = buildKnobStep({ requestId, entry, utterance: command, panelLab });
+    if (!step) return null;
+  } else if (intentResult.intent === ACTION_TYPES.SELECT_PROJECT) {
+    step = buildProjectStep({
+      requestId,
+      utterance: command,
+      projects: resolveProjects(sceneContext)
+    });
+    if (!step) return null;
+  } else {
+    step = createStepForIntent({
+      requestId,
+      intent: intentResult.intent,
+      command,
+      targetObject: sceneUnderstanding.targetObject
+    });
+  }
 
   return createActionPlan({
     planId: createPlanId(requestId),
